@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if error_404 %}页面未找到{% elif error_500 %}服务器错误{% else %}我的图片分享站{% endif %}</title>
+
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
+
+    <!-- 自定义CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+    <!-- 网站图标 -->
+    <link rel="icon" type="image/x-icon" href="https://img.icons8.com/color/48/000000/image--v1.png">
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-images"></i> PicShare
+            </a>
+
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/">
+                            <i class="bi bi-house-door"></i> 首页
+                        </a>
+                    </li>
+                    {% if current_user.is_authenticated %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="/upload">
+                            <i class="bi bi-cloud-arrow-up"></i> 上传
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+
+                <ul class="navbar-nav">
+                    {% if current_user.is_authenticated %}
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
+                                <i class="bi bi-person-circle"></i> {{ current_user.username }}
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><span class="dropdown-item-text">欢迎，{{ current_user.username }}</span></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="/logout">
+                                    <i class="bi bi-box-arrow-right"></i> 退出登录
+                                </a></li>
+                            </ul>
+                        </li>
+                    {% else %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="/login">
+                                <i class="bi bi-box-arrow-in-right"></i> 登录
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/register">
+                                <i class="bi bi-person-plus"></i> 注册
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 主要内容 -->
+    <main class="container mt-5 pt-4">
+        <!-- 消息提示 -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show mt-3" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- 错误页面 -->
+        {% if error_404 %}
+            <div class="text-center py-5 mt-5">
+                <h1 class="display-1 text-muted">404</h1>
+                <h2 class="mb-4">页面未找到</h2>
+                <p class="lead mb-4">抱歉，您访问的页面不存在。</p>
+                <a href="/" class="btn btn-primary btn-lg">
+                    <i class="bi bi-house-door"></i> 返回首页
+                </a>
+            </div>
+
+        {% elif error_500 %}
+            <div class="text-center py-5 mt-5">
+                <h1 class="display-1 text-muted">500</h1>
+                <h2 class="mb-4">服务器错误</h2>
+                <p class="lead mb-4">抱歉，服务器出现了问题。</p>
+                <a href="/" class="btn btn-primary btn-lg">
+                    <i class="bi bi-house-door"></i> 返回首页
+                </a>
+            </div>
+
+        <!-- 正常首页内容 -->
+        {% else %}
+            <!-- 欢迎区域 -->
+            <div class="jumbotron bg-light p-5 rounded-3 mb-4">
+                <h1 class="display-4">欢迎来到 PicShare!</h1>
+                <p class="lead">一个简单而优雅的图片分享社区。</p>
+                <hr class="my-4">
+                <p>上传、分享、发现精彩的图片。</p>
+                {% if not current_user.is_authenticated %}
+                    <a class="btn btn-primary btn-lg me-2" href="/register" role="button">
+                        <i class="bi bi-person-plus"></i> 立即加入
+                    </a>
+                {% endif %}
+                <a class="btn btn-outline-secondary btn-lg" href="/upload" role="button">
+                    <i class="bi bi-cloud-arrow-up"></i> 上传图片
+                </a>
+            </div>
+
+            <!-- 图片区域标题 -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="bi bi-images"></i> 最新图片</h2>
+                <span class="badge bg-primary">{{ images|length }} 张图片</span>
+            </div>
+
+            <!-- 图片展示区域 -->
+            {% if images %}
+                <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+                    {% for image in images %}
+                    <div class="col">
+                        <div class="card h-100 shadow-sm">
+                            <div class="img-container">
+                                <a href="/image/{{ image.id }}">
+                                    <img src="{{ url_for('static', filename='uploads/' + image.filename) }}"
+                                         class="card-img-top"
+                                         alt="{{ image.title }}"
+                                         onerror="this.src='https://via.placeholder.com/300x200/cccccc/969696?text=图片加载失败'">
+                                </a>
+                            </div>
+                            <div class="card-body">
+                                <h5 class="card-title">{{ image.title }}</h5>
+                                <p class="card-text text-truncate-2">{{ image.description }}</p>
+                            </div>
+                            <div class="card-footer bg-transparent">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <a href="/like/{{ image.id }}" class="btn btn-outline-primary btn-sm">
+                                            <i class="bi bi-hand-thumbs-up"></i> {{ image.likes }}
+                                        </a>
+                                        <a href="/image/{{ image.id }}" class="btn btn-outline-secondary btn-sm ms-1">
+                                            <i class="bi bi-eye"></i> 查看
+                                        </a>
+                                    </div>
+                                    <small class="text-muted">
+                                        <i class="bi bi-calendar"></i> {{ image.created_at.strftime('%Y-%m-%d') }}
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <!-- 没有图片时的提示 -->
+                <div class="text-center py-5">
+                    <div class="mb-4">
+                        <i class="bi bi-images" style="font-size: 4rem; color: #6c757d;"></i>
+                    </div>
+                    <h3 class="text-muted mb-3">还没有图片</h3>
+                    <p class="lead mb-4">成为第一个分享图片的人吧！</p>
+                    <a href="/upload" class="btn btn-primary btn-lg">
+                        <i class="bi bi-cloud-arrow-up"></i> 上传第一张图片
+                    </a>
+                </div>
+            {% endif %}
+        {% endif %}
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="footer mt-5 py-4 bg-dark text-white">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5><i class="bi bi-images"></i> PicShare</h5>
+                    <p>一个简单的图片分享平台，使用 Flask 和 Bootstrap 构建。</p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <p class="mb-0">
+                        <!-- 修复：使用 now.year 或静态年份 -->
+                        &copy; {% if now %}{{ now.year }}{% else %}2023{% endif %} 我的图片分享站
+                        <span class="mx-2">|</span>
+                        <a href="/about" class="text-white-50 text-decoration-none">关于</a>
+                    </p>
+                    <small class="text-white-50">
+                        当前用户：{% if current_user.is_authenticated %}{{ current_user.username }}{% else %}未登录{% endif %}
+                    </small>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- 自定义JS -->
+    <script>
+        // 页面加载完成后执行
+        document.addEventListener('DOMContentLoaded', function() {
+            // 自动关闭警告框
+            setTimeout(function() {
+                var alerts = document.querySelectorAll('.alert');
+                alerts.forEach(function(alert) {
+                    var bsAlert = new bootstrap.Alert(alert);
+                    bsAlert.close();
+                });
+            }, 5000);
+
+            // 图片加载失败时显示占位图
+            document.querySelectorAll('img').forEach(function(img) {
+                img.onerror = function() {
+                    this.src = 'https://via.placeholder.com/300x200/cccccc/969696?text=图片加载失败';
+                    this.onerror = null; // 防止循环
+                };
+            });
+        });
+    </script>
+</body>
+</html>

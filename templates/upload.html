@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>上传图片 - PicShare</title>
+
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
+
+    <!-- 自定义CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-images"></i> PicShare
+            </a>
+            <div class="navbar-nav">
+                <a class="nav-link" href="/">
+                    <i class="bi bi-arrow-left"></i> 返回首页
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 主要内容 -->
+    <main class="container mt-4">
+        <div class="row justify-content-center">
+            <div class="col-md-8 col-lg-6">
+                <!-- 卡片容器 -->
+                <div class="card shadow">
+                    <div class="card-header bg-primary text-white">
+                        <h4 class="mb-0">
+                            <i class="bi bi-cloud-arrow-up"></i> 上传新图片
+                        </h4>
+                    </div>
+
+                    <div class="card-body">
+                        <!-- 消息提示 -->
+                        {% with messages = get_flashed_messages(with_categories=true) %}
+                            {% if messages %}
+                                {% for category, message in messages %}
+                                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                                        {{ message }}
+                                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                    </div>
+                                {% endfor %}
+                            {% endif %}
+                        {% endwith %}
+
+                        <!-- 上传表单 -->
+                        <form method="POST" enctype="multipart/form-data" id="uploadForm">
+                            <!-- 文件选择 -->
+                            <div class="mb-4">
+                                <label for="file" class="form-label fw-bold">选择图片</label>
+                                <div class="file-upload-area border rounded p-4 text-center">
+                                    <i class="bi bi-cloud-arrow-up display-4 text-muted mb-3"></i>
+                                    <p class="mb-2">点击或拖拽文件到此区域</p>
+                                    <p class="text-muted small mb-3">支持格式：JPG、PNG、GIF、WebP</p>
+                                    <input type="file" class="form-control d-none" id="file" name="file"
+                                           accept=".jpg,.jpeg,.png,.gif,.webp" required
+                                           onchange="previewImage(this)">
+                                    <button type="button" class="btn btn-outline-primary" onclick="document.getElementById('file').click()">
+                                        <i class="bi bi-folder2-open"></i> 选择文件
+                                    </button>
+                                </div>
+
+                                <!-- 图片预览 -->
+                                <div class="mt-3 text-center" id="imagePreview" style="display: none;">
+                                    <p class="mb-2">预览：</p>
+                                    <img id="preview" class="img-thumbnail" style="max-height: 200px;">
+                                    <p class="small text-muted mt-2" id="fileInfo"></p>
+                                </div>
+                            </div>
+
+                            <!-- 标题 -->
+                            <div class="mb-3">
+                                <label for="title" class="form-label fw-bold">图片标题</label>
+                                <input type="text" class="form-control" id="title" name="title"
+                                       placeholder="给图片起个名字（例如：美丽的日落）"
+                                       maxlength="100" required>
+                                <div class="form-text">最多100个字符</div>
+                            </div>
+
+                            <!-- 描述 -->
+                            <div class="mb-4">
+                                <label for="description" class="form-label fw-bold">图片描述（可选）</label>
+                                <textarea class="form-control" id="description" name="description"
+                                          rows="4" placeholder="描述一下这张图片的内容、拍摄地点、背后的故事..."></textarea>
+                                <div class="form-text">分享图片的故事，让更多人了解</div>
+                            </div>
+
+                            <!-- 上传信息 -->
+                            <div class="alert alert-info">
+                                <h6><i class="bi bi-info-circle"></i> 上传须知</h6>
+                                <ul class="mb-0 small">
+                                    <li>最大文件大小：16 MB</li>
+                                    <li>支持格式：JPG、PNG、GIF、WebP</li>
+                                    <li>请确保您拥有图片的版权或已获授权</li>
+                                    <li>上传的图片将对所有用户可见</li>
+                                </ul>
+                            </div>
+
+                            <!-- 按钮 -->
+                            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                <a href="/" class="btn btn-secondary me-md-2">
+                                    <i class="bi bi-x-circle"></i> 取消
+                                </a>
+                                <button type="submit" class="btn btn-primary" id="submitBtn">
+                                    <i class="bi bi-upload"></i> 上传图片
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- 上传指引 -->
+                <div class="card mt-4 shadow-sm">
+                    <div class="card-body">
+                        <h5><i class="bi bi-lightbulb"></i> 上传小贴士</h5>
+                        <ul class="mb-0">
+                            <li class="mb-2">使用清晰的标题，让人一目了然</li>
+                            <li class="mb-2">添加详细的描述，分享图片背后的故事</li>
+                            <li class="mb-2">确保图片清晰，大小适中</li>
+                            <li class="mb-0">尊重他人版权，只上传自己拥有版权的图片</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="footer mt-5 py-4 bg-dark text-white">
+        <div class="container text-center">
+            <p class="mb-0">&copy; {% if now %}{{ now.year }}{% else %}2023{% endif %} PicShare - 图片分享平台</p>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- 上传脚本 -->
+    <script>
+        // 图片预览功能
+        function previewImage(input) {
+            const preview = document.getElementById('preview');
+            const previewContainer = document.getElementById('imagePreview');
+            const fileInfo = document.getElementById('fileInfo');
+            const submitBtn = document.getElementById('submitBtn');
+
+            if (input.files && input.files[0]) {
+                const file = input.files[0];
+                const reader = new FileReader();
+
+                // 检查文件大小
+                const maxSize = 16 * 1024 * 1024; // 16MB
+                if (file.size > maxSize) {
+                    alert('文件太大！最大支持16MB。');
+                    input.value = '';
+                    previewContainer.style.display = 'none';
+                    submitBtn.disabled = true;
+                    return;
+                }
+
+                // 检查文件类型
+                const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+                if (!allowedTypes.includes(file.type)) {
+                    alert('不支持的文件类型！请选择图片文件。');
+                    input.value = '';
+                    previewContainer.style.display = 'none';
+                    submitBtn.disabled = true;
+                    return;
+                }
+
+                reader.onload = function(e) {
+                    preview.src = e.target.result;
+                    previewContainer.style.display = 'block';
+
+                    // 显示文件信息
+                    const fileSize = (file.size / 1024 / 1024).toFixed(2);
+                    fileInfo.textContent = `文件名：${file.name} | 大小：${fileSize} MB`;
+
+                    // 启用提交按钮
+                    submitBtn.disabled = false;
+                };
+
+                reader.readAsDataURL(file);
+            } else {
+                previewContainer.style.display = 'none';
+                submitBtn.disabled = true;
+            }
+        }
+
+        // 拖拽上传
+        document.addEventListener('DOMContentLoaded', function() {
+            const uploadArea = document.querySelector('.file-upload-area');
+            const fileInput = document.getElementById('file');
+
+            // 拖拽事件
+            uploadArea.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                uploadArea.classList.add('bg-light');
+            });
+
+            uploadArea.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                uploadArea.classList.remove('bg-light');
+            });
+
+            uploadArea.addEventListener('drop', function(e) {
+                e.preventDefault();
+                uploadArea.classList.remove('bg-light');
+
+                if (e.dataTransfer.files.length) {
+                    fileInput.files = e.dataTransfer.files;
+                    previewImage(fileInput);
+                }
+            });
+
+            // 点击区域触发文件选择
+            uploadArea.addEventListener('click', function() {
+                fileInput.click();
+            });
+
+            // 表单提交时的处理
+            document.getElementById('uploadForm').addEventListener('submit', function(e) {
+                const submitBtn = document.getElementById('submitBtn');
+                const originalText = submitBtn.innerHTML;
+
+                // 禁用按钮并显示加载状态
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 上传中...';
+
+                // 文件较大时可能需要时间
+                return true;
+            });
+        });
+    </script>
+</body>
+</html>
