@@ -1,0 +1,9 @@
+Looking in indexes: https://mirrors.aliyun.com/pypi/simple/
+Collecting mysql-connector-python
+  Using cached https://mirrors.aliyun.com/pypi/packages/9c/88/bc13c33fca11acaf808bd1809d8602d78f5bb84f7b1e7b1a288c383a14fd/mysql_connector_python-9.5.0-cp311-cp311-win_amd64.whl (16.5 MB)
+Installing collected packages: mysql-connector-python
+  Attempting uninstall: mysql-connector-python
+    Found existing installation: mysql-connector-python 9.5.0
+    Uninstalling mysql-connector-python-9.5.0:
+      Successfully uninstalled mysql-connector-python-9.5.0
+Successfully installed mysql-connector-python-9.5.0

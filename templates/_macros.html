@@ -1,0 +1,25 @@
+{% macro show_image(image, class='card-img-top') %}
+    {% set thumb_path = image.get('thumbnail_path', '') %}
+    {% set file_name = image.get('filename', '') %}
+    
+    {% if thumb_path and thumb_path != '' %}
+        {% if '/' in thumb_path %}
+            {% set thumb_file = thumb_path.split('/')[-1] %}
+        {% else %}
+            {% set thumb_file = thumb_path %}
+        {% endif %}
+        <img src="/static/uploads/{{ thumb_file }}"
+             class="{{ class }}"
+             alt="{{ image.title }}"
+             onerror="this.onerror=null;this.src='/static/uploads/{{ file_name }}';">
+    {% elif file_name and file_name != '' %}
+        <img src="/static/uploads/{{ file_name }}"
+             class="{{ class }}"
+             alt="{{ image.title }}"
+             onerror="this.onerror=null;this.src='https://via.placeholder.com/300x200/cccccc/969696?text=图片加载失败'">
+    {% else %}
+        <img src="https://via.placeholder.com/300x200/cccccc/969696?text=暂无图片"
+             class="{{ class }}"
+             alt="{{ image.title }}">
+    {% endif %}
+{% endmacro %}

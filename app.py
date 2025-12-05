@@ -1,327 +1,753 @@
 """
-我的图片分享网站 - 主程序文件
-已修复部署和模板问题
+图片分享网站 - 适配pic_share_db数据库结构
+修复Flask-Login的is_active属性问题
 """
 
 from flask import Flask, render_template, request, redirect, url_for, flash, send_from_directory
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 import os
+import logging
+from datetime import datetime
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime
+import mysql.connector
+from mysql.connector import Error
+import uuid
+from PIL import Image
+import math
 
-# 创建Flask应用 - 关键修改
+# ====================== 1. 初始化Flask应用 ======================
 app = Flask(__name__, static_folder='static', static_url_path='/static')
 
-# 基础配置
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-this-in-production')
-app.config['UPLOAD_FOLDER'] = 'static/uploads'
+# ====================== 2. MySQL数据库配置 ======================
+# 使用您创建的pic_share_user用户
+DB_CONFIG = {
+    'host': 'localhost',
+    'user': 'pic_share_user',
+    'password': '123456',
+    'database': 'pic_share_db',
+    'charset': 'utf8mb4'
+}
+
+# ====================== 3. 基础配置 ======================
+app.config['SECRET_KEY'] = 'dev-pic-share-2025-123456'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB
 app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+app.config['UPLOAD_FOLDER'] = os.path.join(app.root_path, 'static', 'uploads')
 
-# 初始化Flask-Login
+# ====================== 4. 日志配置 ======================
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[logging.StreamHandler()]
+)
+logger = logging.getLogger(__name__)
+
+# ====================== 5. 初始化Flask-Login ======================
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
-login_manager.login_message = '请先登录以访问此页面。'
+login_manager.login_message = '请先登录以访问该页面！'
 login_manager.login_message_category = 'warning'
 
-# 用户类
+# ====================== 6. 数据库辅助函数 ======================
+def get_db_connection():
+    """获取数据库连接"""
+    try:
+        conn = mysql.connector.connect(**DB_CONFIG)
+        return conn
+    except Error as e:
+        logger.error(f"数据库连接失败: {e}")
+        # 尝试使用root用户作为备选
+        try:
+            backup_config = DB_CONFIG.copy()
+            backup_config['user'] = 'root'
+            backup_config['password'] = '123456'
+            conn = mysql.connector.connect(**backup_config)
+            logger.info("使用root用户连接数据库成功")
+            return conn
+        except Error as e2:
+            logger.error(f"备用连接也失败: {e2}")
+        return None
+
+def execute_query(query, params=None, fetch_one=False, fetch_all=False, commit=False):
+    """执行SQL查询"""
+    conn = get_db_connection()
+    if conn is None:
+        return None
+
+    cursor = None
+    try:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute(query, params or ())
+
+        if commit:
+            conn.commit()
+
+        if fetch_one:
+            result = cursor.fetchone()
+        elif fetch_all:
+            result = cursor.fetchall()
+        elif commit:
+            result = cursor.lastrowid
+        else:
+            result = None
+
+        return result
+    except Error as e:
+        logger.error(f"SQL执行失败: {e}")
+        if conn:
+            conn.rollback()
+        return None
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+# ====================== 7. 数据模型 - 修复版 ======================
 class User(UserMixin):
-    def __init__(self, id, username, password_hash):
+    def __init__(self, id, username, email, password_hash, created_at=None, is_active=True):
         self.id = id
         self.username = username
+        self.email = email
         self.password_hash = password_hash
-        self.created_at = datetime.now()
+        self.created_at = created_at
+        self._is_active = is_active  # 使用私有变量存储
 
-# 图片类
-class Image:
-    def __init__(self, id, filename, title, description, user_id):
-        self.id = id
-        self.filename = filename
-        self.title = title
-        self.description = description
-        self.user_id = user_id
-        self.likes = 0
-        self.created_at = datetime.now()
+    # 将is_active定义为属性
+    @property
+    def is_active(self):
+        return self._is_active
 
-# 内存存储（生产环境请换成数据库）
-users = {
-    1: User(1, 'admin', generate_password_hash('admin123')),
-    2: User(2, 'test', generate_password_hash('test123'))
-}
+    @is_active.setter
+    def is_active(self, value):
+        self._is_active = value
 
-images = [
-    Image(1, 'example1.jpg', '美丽的风景', '这是一张美丽的风景图片，拍摄于山间。', 1),
-    Image(2, 'example2.jpg', '可爱的小猫', '一只可爱的小猫在玩耍。', 2)
-]
+    @staticmethod
+    def get_by_id(user_id):
+        query = "SELECT * FROM users WHERE id = %s"
+        result = execute_query(query, (user_id,), fetch_one=True)
+        if result:
+            return User(
+                id=result['id'],
+                username=result['username'],
+                email=result['email'],
+                password_hash=result['password_hash'],
+                created_at=result.get('created_at'),
+                is_active=bool(result.get('is_active', True))
+            )
+        return None
 
-# 设置示例图片的点赞数
-images[0].likes = 5
-images[1].likes = 3
+    @staticmethod
+    def get_by_username(username):
+        query = "SELECT * FROM users WHERE username = %s"
+        result = execute_query(query, (username,), fetch_one=True)
+        if result:
+            return User(
+                id=result['id'],
+                username=result['username'],
+                email=result['email'],
+                password_hash=result['password_hash'],
+                created_at=result.get('created_at'),
+                is_active=bool(result.get('is_active', True))
+            )
+        return None
 
-# 添加上下文处理器 - 解决 now.year 错误
-@app.context_processor
-def inject_now():
-    """注入当前时间到所有模板"""
-    return {'now': datetime.now()}
+    @staticmethod
+    def get_by_email(email):
+        query = "SELECT * FROM users WHERE email = %s"
+        result = execute_query(query, (email,), fetch_one=True)
+        if result:
+            return User(
+                id=result['id'],
+                username=result['username'],
+                email=result['email'],
+                password_hash=result['password_hash'],
+                created_at=result.get('created_at'),
+                is_active=bool(result.get('is_active', True))
+            )
+        return None
 
+    @staticmethod
+    def create(username, password, email=None):
+        password_hash = generate_password_hash(password)
+        query = """
+            INSERT INTO users (username, email, password_hash, is_active)
+            VALUES (%s, %s, %s, %s)
+        """
+        user_id = execute_query(query, (username, email, password_hash, True), commit=True)
+        if user_id:
+            return User.get_by_id(user_id)
+        return None
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
+# ====================== 8. Flask-Login用户加载器 ======================
 @login_manager.user_loader
 def load_user(user_id):
-    """加载用户"""
-    return users.get(int(user_id))
+    try:
+        return User.get_by_id(int(user_id))
+    except:
+        return None
 
+# ====================== 9. 辅助函数 ======================
 def allowed_file(filename):
-    """检查文件类型是否允许"""
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
 
-# 健康检查路由（给部署平台用）
-@app.route('/health')
-def health_check():
-    return 'OK', 200
+def ensure_upload_folder():
+    if not os.path.exists(app.config['UPLOAD_FOLDER']):
+        os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+        logger.info(f"创建上传文件夹：{app.config['UPLOAD_FOLDER']}")
 
-# 提供上传的图片文件
-@app.route('/uploads/<filename>')
-def uploaded_file(filename):
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+def create_thumbnail(image_path, max_size=(300, 200)):
+    """创建缩略图"""
+    try:
+        with Image.open(image_path) as img:
+            img.thumbnail(max_size)
+            thumbnail_name = f"thumb_{os.path.basename(image_path)}"
+            thumbnail_path = os.path.join(app.config['UPLOAD_FOLDER'], thumbnail_name)
+            # 转换为RGB模式（如果是RGBA）
+            if img.mode in ('RGBA', 'LA'):
+                background = Image.new('RGB', img.size, (255, 255, 255))
+                background.paste(img, mask=img.split()[-1])
+                img = background
 
+            # 根据文件扩展名保存
+            if thumbnail_name.lower().endswith('.jpg') or thumbnail_name.lower().endswith('.jpeg'):
+                img.save(thumbnail_path, 'JPEG', quality=85)
+            else:
+                img.save(thumbnail_path, 'PNG')
+            return thumbnail_name
+    except Exception as e:
+        logger.error(f"创建缩略图失败: {e}")
+        return None
+
+# ====================== 10. 上下文处理器 ======================
+@app.context_processor
+def inject_now():
+    return {'now': datetime.now()}
+
+# ====================== 11. 核心路由 ======================
 @app.route('/')
 def index():
-    """首页 - 显示所有图片"""
-    sorted_images = sorted(images, key=lambda x: x.created_at, reverse=True)
-    return render_template('index.html', images=sorted_images)
+    """首页 - 展示所有公开图片"""
+    try:
+        query = """
+            SELECT i.*, u.username 
+            FROM images i 
+            LEFT JOIN users u ON i.user_id = u.id 
+            WHERE i.is_active = TRUE
+            ORDER BY i.upload_time DESC
+            LIMIT 30
+        """
+        results = execute_query(query, fetch_all=True)
+
+        images = []
+        if results:
+            for row in results:
+                # 处理文件路径
+                file_path = row['file_path']
+                if file_path.startswith('/'):
+                    file_path = file_path[1:]
+
+                image = {
+                    'id': row['id'],
+                    'filename': row['filename'],
+                    'original_filename': row['original_name'],
+                    'title': row['title'] or row['original_name'],
+                    'description': row['description'] or '',
+                    'user_id': row['user_id'],
+                    'upload_time': row['upload_time'],
+                    'views': row.get('views', 0),
+                    'likes': row.get('likes', 0),
+                    'username': row['username'],
+                    'file_path': file_path,
+                    'author': {'username': row['username']}
+                }
+                images.append(image)
+    except Exception as e:
+        logger.error(f"获取图片失败: {e}")
+        images = []
+
+    return render_template('index.html', images=images)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    """登录页面"""
     if current_user.is_authenticated:
         return redirect(url_for('index'))
 
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
-        password = request.form.get('password', '')
+        password = request.form.get('password', '').strip()
 
-        # 查找用户
-        user = None
-        for u in users.values():
-            if u.username == username and check_password_hash(u.password_hash, password):
-                user = u
-                break
+        if not username or not password:
+            flash('用户名和密码不能为空！', 'danger')
+            return render_template('login.html')
 
-        if user:
+        user = User.get_by_username(username)
+
+        if user is None:
+            flash('用户名不存在！', 'danger')
+        elif not user.check_password(password):
+            flash('密码错误！', 'danger')
+        elif not user.is_active:
+            flash('账号已被禁用！', 'danger')
+        else:
             login_user(user, remember=True)
             flash(f'欢迎回来，{username}！', 'success')
             next_page = request.args.get('next')
-            return redirect(next_page) if next_page else redirect(url_for('index'))
-        else:
-            flash('用户名或密码错误，请重试。', 'danger')
+            return redirect(next_page or url_for('index'))
 
     return render_template('login.html')
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
-    """注册页面"""
     if current_user.is_authenticated:
         return redirect(url_for('index'))
 
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
+        email = request.form.get('email', '').strip()
         password = request.form.get('password', '')
         confirm_password = request.form.get('confirm_password', '')
 
-        # 验证输入
-        if not username or not password:
-            flash('用户名和密码不能为空。', 'danger')
+        if not username or not password or not email:
+            flash('用户名、邮箱和密码不能为空！', 'danger')
         elif len(username) < 3:
-            flash('用户名至少需要3个字符。', 'danger')
+            flash('用户名至少3个字符！', 'danger')
         elif len(password) < 6:
-            flash('密码至少需要6个字符。', 'danger')
+            flash('密码至少6个字符！', 'danger')
         elif password != confirm_password:
-            flash('两次输入的密码不一致。', 'danger')
+            flash('两次密码不一致！', 'danger')
+        elif User.get_by_username(username):
+            flash('用户名已存在！', 'danger')
         else:
-            # 检查用户名是否已存在
-            for u in users.values():
-                if u.username == username:
-                    flash('用户名已存在，请选择其他用户名。', 'danger')
-                    return render_template('register.html')
-
-            # 创建新用户
-            new_id = max(users.keys()) + 1 if users else 1
-            new_user = User(new_id, username, generate_password_hash(password))
-            users[new_id] = new_user
-
-            flash('注册成功！请登录。', 'success')
-            return redirect(url_for('login'))
+            # 检查邮箱是否已存在
+            existing_email = User.get_by_email(email)
+            if existing_email:
+                flash('邮箱已被注册！', 'danger')
+            else:
+                user = User.create(username, password, email)
+                if user:
+                    flash('注册成功！请登录', 'success')
+                    return redirect(url_for('login'))
+                else:
+                    flash('注册失败，请稍后重试', 'danger')
 
     return render_template('register.html')
 
 @app.route('/logout')
 @login_required
 def logout():
-    """退出登录"""
     username = current_user.username
     logout_user()
-    flash(f'再见，{username}！您已成功退出。', 'info')
+    flash(f'再见，{username}！已成功退出', 'info')
     return redirect(url_for('index'))
 
 @app.route('/upload', methods=['GET', 'POST'])
 @login_required
 def upload():
-    """上传图片页面"""
+    """图片上传功能"""
     if request.method == 'POST':
-        if 'file' not in request.files:
-            flash('没有选择文件。', 'danger')
+        if 'image' not in request.files:
+            flash('未选择文件！', 'danger')
             return redirect(request.url)
 
-        file = request.files['file']
+        file = request.files['image']
 
         if file.filename == '':
-            flash('没有选择文件。', 'danger')
+            flash('未选择文件！', 'danger')
             return redirect(request.url)
 
         if file and allowed_file(file.filename):
-            # 安全地获取文件名
-            filename = secure_filename(file.filename)
+            # 生成唯一文件名
+            original_filename = secure_filename(file.filename)
+            ext = original_filename.rsplit('.', 1)[1].lower()
+            unique_filename = f"{uuid.uuid4().hex}.{ext}"
 
-            # 确保上传文件夹存在
-            upload_folder = app.config['UPLOAD_FOLDER']
-            if not os.path.exists(upload_folder):
-                os.makedirs(upload_folder, exist_ok=True)
+            ensure_upload_folder()
 
             # 保存文件
-            filepath = os.path.join(upload_folder, filename)
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
             file.save(filepath)
 
+            # 创建缩略图
+            thumbnail_name = create_thumbnail(filepath)
+
+            # 获取文件信息
+            file_size = os.path.getsize(filepath)
+            mime_type = file.content_type or f"image/{ext}"
+
             # 获取表单数据
-            title = request.form.get('title', '无标题').strip()
+            title = request.form.get('title', '').strip()
+            if not title:
+                title = original_filename.rsplit('.', 1)[0]
+
             description = request.form.get('description', '').strip()
 
-            # 创建图片对象
-            new_id = max([img.id for img in images]) + 1 if images else 1
-            new_image = Image(
-                id=new_id,
-                filename=filename,
-                title=title if title else '无标题',
-                description=description,
-                user_id=current_user.id
+            # 插入数据到数据库
+            insert_query = """
+                INSERT INTO images 
+                (filename, original_name, file_path, file_size, mime_type, 
+                 title, description, user_id, upload_time, views, likes)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """
+
+            params = (
+                unique_filename,
+                original_filename,
+                f"uploads/{unique_filename}",
+                file_size,
+                mime_type,
+                title,
+                description,
+                current_user.id,
+                datetime.now(),
+                0,  # views
+                0   # likes
             )
 
-            # 添加到图片列表
-            images.append(new_image)
+            result = execute_query(insert_query, params, commit=True)
 
-            flash('图片上传成功！', 'success')
-            return redirect(url_for('index'))
+            if result:
+                # 如果有缩略图，更新缩略图路径
+                if thumbnail_name:
+                    update_query = "UPDATE images SET thumbnail_path = %s WHERE id = %s"
+                    execute_query(update_query, (f"uploads/{thumbnail_name}", result), commit=True)
+
+                flash('图片上传成功！', 'success')
+                return redirect(url_for('index'))
+            else:
+                flash('图片保存失败，数据库错误', 'danger')
         else:
-            flash('不支持的文件类型。请上传 PNG、JPG、JPEG、GIF 或 WebP 格式的图片。', 'danger')
+            flash('不支持的文件格式！仅支持PNG/JPG/JPEG/GIF/WEBP', 'danger')
 
     return render_template('upload.html')
 
 @app.route('/image/<int:image_id>')
 def image_detail(image_id):
-    """图片详情页面"""
-    # 查找图片
-    image = None
-    for img in images:
-        if img.id == image_id:
-            image = img
-            break
+    """图片详情页"""
+    query = """
+        SELECT i.*, u.username 
+        FROM images i 
+        LEFT JOIN users u ON i.user_id = u.id 
+        WHERE i.id = %s
+    """
+    result = execute_query(query, (image_id,), fetch_one=True)
 
-    if image is None:
-        flash('图片不存在。', 'danger')
+    if not result:
+        flash('图片不存在！', 'danger')
         return redirect(url_for('index'))
 
-    # 查找上传者用户名
-    uploader = users.get(image.user_id)
-    uploader_name = uploader.username if uploader else '未知用户'
+    # 增加浏览次数
+    update_query = "UPDATE images SET views = views + 1 WHERE id = %s"
+    execute_query(update_query, (image_id,), commit=True)
 
-    return render_template('image_detail.html', image=image, uploader_name=uploader_name)
+    # 处理文件路径
+    file_path = result['file_path']
+    if file_path.startswith('/'):
+        file_path = file_path[1:]
+
+    thumbnail_path = result.get('thumbnail_path')
+    if thumbnail_path and thumbnail_path.startswith('/'):
+        thumbnail_path = thumbnail_path[1:]
+
+    # 构造图片对象
+    image = {
+        'id': result['id'],
+        'filename': result['filename'],
+        'original_filename': result['original_name'],
+        'title': result['title'] or result['original_name'],
+        'description': result['description'] or '',
+        'user_id': result['user_id'],
+        'upload_time': result.get('upload_time', datetime.now()),
+        'views': result.get('views', 0) + 1,
+        'likes': result.get('likes', 0),
+        'username': result['username'],
+        'file_path': file_path,
+        'thumbnail_path': thumbnail_path,
+        'file_size': result.get('file_size', 0),
+        'mime_type': result.get('mime_type', 'image/jpeg'),
+        'author': {'username': result['username']}
+    }
+
+    return render_template('image_detail.html', image=image)
 
 @app.route('/like/<int:image_id>')
 @login_required
 def like_image(image_id):
-    """给图片点赞"""
-    # 查找图片
-    image = None
-    for img in images:
-        if img.id == image_id:
-            image = img
-            break
+    """图片点赞"""
+    # 检查图片是否存在
+    check_query = "SELECT * FROM images WHERE id = %s"
+    image = execute_query(check_query, (image_id,), fetch_one=True)
 
-    if image is None:
-        flash('图片不存在。', 'danger')
+    if not image:
+        flash('图片不存在！', 'danger')
         return redirect(url_for('index'))
 
-    # 增加点赞数
-    image.likes += 1
-    flash('点赞成功！', 'success')
+    # 检查是否已经点赞
+    check_like_query = """
+        SELECT id FROM likes WHERE user_id = %s AND image_id = %s
+    """
+    existing_like = execute_query(check_like_query, (current_user.id, image_id), fetch_one=True)
 
-    # 返回来源页面或首页
-    referrer = request.referrer
-    return redirect(referrer) if referrer else redirect(url_for('index'))
+    if existing_like:
+        # 已经点赞，取消点赞
+        delete_like_query = "DELETE FROM likes WHERE user_id = %s AND image_id = %s"
+        execute_query(delete_like_query, (current_user.id, image_id), commit=True)
 
-@app.route('/delete/<int:image_id>')
+        update_query = "UPDATE images SET likes = GREATEST(0, likes - 1) WHERE id = %s"
+        execute_query(update_query, (image_id,), commit=True)
+        flash('已取消点赞！', 'info')
+    else:
+        # 添加点赞
+        like_query = "INSERT INTO likes (user_id, image_id) VALUES (%s, %s)"
+        execute_query(like_query, (current_user.id, image_id), commit=True)
+
+        update_query = "UPDATE images SET likes = likes + 1 WHERE id = %s"
+        execute_query(update_query, (image_id,), commit=True)
+        flash('点赞成功！', 'success')
+
+    return redirect(request.referrer or url_for('index'))
+
+@app.route('/delete/<int:image_id>', methods=['POST'])
 @login_required
 def delete_image(image_id):
-    """删除图片（仅上传者或管理员可以删除）"""
-    # 查找图片
-    image = None
-    for img in images:
-        if img.id == image_id:
-            image = img
-            break
+    """删除图片"""
+    query = "SELECT * FROM images WHERE id = %s"
+    result = execute_query(query, (image_id,), fetch_one=True)
 
-    if image is None:
-        flash('图片不存在。', 'danger')
+    if not result:
+        flash('图片不存在！', 'danger')
         return redirect(url_for('index'))
 
-    # 检查权限：上传者或管理员（id=1）
-    if current_user.id != image.user_id and current_user.id != 1:
-        flash('您没有权限删除此图片。', 'danger')
+    # 权限校验
+    if current_user.id != result['user_id'] and current_user.id != 1:
+        flash('无权限删除该图片！', 'danger')
         return redirect(url_for('image_detail', image_id=image_id))
 
     try:
         # 删除文件
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], image.filename)
+        filename = result['filename']
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         if os.path.exists(filepath):
             os.remove(filepath)
 
-        # 从列表中删除
-        images.remove(image)
-        flash('图片删除成功。', 'success')
+        # 删除缩略图
+        if result.get('thumbnail_path'):
+            thumb_filename = result['thumbnail_path'].split('/')[-1]
+            thumb_path = os.path.join(app.config['UPLOAD_FOLDER'], thumb_filename)
+            if os.path.exists(thumb_path):
+                os.remove(thumb_path)
+
+        # 删除数据库记录
+        delete_query = "DELETE FROM images WHERE id = %s"
+        execute_query(delete_query, (image_id,), commit=True)
+
+        # 删除点赞记录
+        delete_likes_query = "DELETE FROM likes WHERE image_id = %s"
+        execute_query(delete_likes_query, (image_id,), commit=True)
+
+        flash('图片删除成功！', 'success')
     except Exception as e:
-        flash(f'删除图片时出错：{str(e)}', 'danger')
+        logger.error(f"删除图片失败：{e}")
+        flash(f'删除失败：{str(e)}', 'danger')
 
     return redirect(url_for('index'))
 
-@app.route('/about')
-def about():
-    """关于页面"""
-    return render_template('index.html', about_page=True)
+@app.route('/my-images')
+@login_required
+def my_images():
+    """查看我的图片"""
+    query = """
+        SELECT * FROM images 
+        WHERE user_id = %s
+        ORDER BY upload_time DESC
+    """
+    results = execute_query(query, (current_user.id,), fetch_all=True)
 
+    images = []
+    if results:
+        for row in results:
+            # 处理文件路径
+            file_path = row['file_path']
+            if file_path.startswith('/'):
+                file_path = file_path[1:]
+
+            thumbnail_path = row.get('thumbnail_path')
+            if thumbnail_path and thumbnail_path.startswith('/'):
+                thumbnail_path = thumbnail_path[1:]
+
+            image = {
+                'id': row['id'],
+                'filename': row['filename'],
+                'original_filename': row['original_name'],
+                'title': row['title'] or row['original_name'],
+                'description': row['description'] or '',
+                'upload_time': row.get('upload_time', datetime.now()),
+                'views': row.get('views', 0),
+                'likes': row.get('likes', 0),
+                'file_path': file_path,
+                'thumbnail_path': thumbnail_path
+            }
+            images.append(image)
+
+    return render_template('my_images.html', images=images)
+
+@app.route('/uploads/<filename>')
+def uploaded_file(filename):
+    """提供上传图片的访问"""
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
+# ====================== 12. 搜索功能 ======================
+@app.route('/search')
+def search():
+    query = request.args.get('q', '').strip()
+    page = request.args.get('page', 1, type=int)
+    per_page = 12
+
+    if not query:
+        return render_template('search.html', query=query, images={'items': []})
+
+    try:
+        search_query = """
+            SELECT i.*, u.username 
+            FROM images i 
+            LEFT JOIN users u ON i.user_id = u.id 
+            WHERE i.is_active = TRUE
+            AND (i.title LIKE %s OR i.description LIKE %s OR u.username LIKE %s)
+            ORDER BY i.upload_time DESC
+            LIMIT %s OFFSET %s
+        """
+
+        search_param = f"%{query}%"
+        offset = (page - 1) * per_page
+        params = (search_param, search_param, search_param, per_page, offset)
+
+        results = execute_query(search_query, params, fetch_all=True)
+
+        images = []
+        if results:
+            for row in results:
+                # 处理文件路径
+                file_path = row['file_path']
+                if file_path.startswith('/'):
+                    file_path = file_path[1:]
+
+                thumbnail_path = row.get('thumbnail_path')
+                if thumbnail_path and thumbnail_path.startswith('/'):
+                    thumbnail_path = thumbnail_path[1:]
+
+                image = {
+                    'id': row['id'],
+                    'filename': row['filename'],
+                    'original_filename': row['original_name'],
+                    'title': row['title'] or row['original_name'],
+                    'description': row['description'] or '',
+                    'upload_time': row.get('upload_time', datetime.now()),
+                    'views': row.get('views', 0),
+                    'likes': row.get('likes', 0),
+                    'username': row['username'],
+                    'file_path': file_path,
+                    'thumbnail_path': thumbnail_path,
+                    'author': {'username': row['username']}
+                }
+                images.append(image)
+
+        # 获取总数
+        count_query = """
+            SELECT COUNT(*) as total 
+            FROM images i 
+            LEFT JOIN users u ON i.user_id = u.id 
+            WHERE i.is_active = TRUE
+            AND (i.title LIKE %s OR i.description LIKE %s OR u.username LIKE %s)
+        """
+        count_result = execute_query(count_query, (search_param, search_param, search_param), fetch_one=True)
+        total = count_result['total'] if count_result else 0
+
+        # 创建分页对象
+        pagination = {
+            'page': page,
+            'per_page': per_page,
+            'total': total,
+            'pages': math.ceil(total / per_page) if total > 0 else 1,
+            'items': images
+        }
+
+        return render_template('search.html', query=query, images=pagination)
+
+    except Exception as e:
+        logger.error(f"搜索失败: {e}")
+        return render_template('search.html', query=query, images={'items': []})
+
+# ====================== 13. 错误处理 ======================
 @app.errorhandler(404)
 def page_not_found(error):
-    """404错误页面"""
     return render_template('index.html', error_404=True), 404
 
 @app.errorhandler(500)
 def internal_server_error(error):
-    """500错误页面"""
+    logger.error(f"服务器内部错误：{error}")
     return render_template('index.html', error_500=True), 500
 
-if __name__ == '__main__':
-    # 确保上传文件夹存在
-    upload_folder = app.config['UPLOAD_FOLDER']
-    if not os.path.exists(upload_folder):
-        os.makedirs(upload_folder, exist_ok=True)
+@app.errorhandler(413)
+def request_too_large(error):
+    return render_template('index.html', error_413=True), 413
 
-    # 从环境变量获取端口，适应各种部署平台
+# ====================== 14. 初始化函数 ======================
+def init_app():
+    """初始化应用"""
+    ensure_upload_folder()
+
+    # 检查并创建likes表
+    try:
+        check_likes_query = "SHOW TABLES LIKE 'likes'"
+        likes_table = execute_query(check_likes_query, fetch_one=True)
+
+        if not likes_table:
+            # 创建likes表
+            create_likes_query = """
+                CREATE TABLE IF NOT EXISTS likes (
+                    id INT PRIMARY KEY AUTO_INCREMENT,
+                    user_id INT NOT NULL,
+                    image_id INT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                    FOREIGN KEY (image_id) REFERENCES images(id) ON DELETE CASCADE,
+                    UNIQUE KEY unique_like (user_id, image_id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            """
+            execute_query(create_likes_query, commit=True)
+            logger.info("创建likes表成功")
+
+        # 检查images表是否有likes字段
+        check_likes_column = "SHOW COLUMNS FROM images LIKE 'likes'"
+        has_likes_column = execute_query(check_likes_column, fetch_one=True)
+
+        if not has_likes_column:
+            # 添加likes字段
+            alter_query = "ALTER TABLE images ADD COLUMN likes INT DEFAULT 0"
+            execute_query(alter_query, commit=True)
+            logger.info("为images表添加likes字段成功")
+
+        logger.info("数据库连接正常")
+
+    except Exception as e:
+        logger.error(f"数据库检查失败: {e}")
+
+# ====================== 15. 启动应用 ======================
+if __name__ == '__main__':
+    init_app()
+
     port = int(os.environ.get('PORT', 5000))
-    debug = os.environ.get('FLASK_ENV') == 'development'
+    logger.info(f"启动应用：http://localhost:{port}")
 
     app.run(
         host='0.0.0.0',
         port=port,
-        debug=debug,
+        debug=True,
         threaded=True
     )

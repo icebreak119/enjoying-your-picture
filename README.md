@@ -1,40 +1,20 @@
 # PicShare - 图片分享网站
 
-一个使用 Flask 构建的简单图片分享网站。
+一个基于 Flask + MySQL 的图片分享社区网站，支持用户注册、登录、图片上传、点赞、搜索等功能。
 
-## 功能特点
-- ✅ 用户注册/登录
-- ✅ 图片上传
-- ✅ 图片展示（瀑布流布局）
-- ✅ 点赞功能
-- ✅ 响应式设计（支持手机/电脑）
+## ✨ 功能特性
 
-## 技术栈
-- **后端**: Python + Flask
-- **前端**: HTML5 + CSS3 + Bootstrap 5
-- **数据库**: 内存存储（开发版）
-- **部署**: Railway.app
+- ✅ 用户注册与登录（使用Flask-Login）
+- ✅ 图片上传与展示（支持缩略图生成）
+- ✅ 图片点赞与浏览统计
+- ✅ 图片搜索功能
+- ✅ 用户个人图片管理
+- ✅ 响应式设计（适配移动端）
+- ✅ MySQL 数据持久化存储
 
-## 快速开始
+## 🚀 快速开始
 
-### 1. 本地运行
+### 1. 克隆项目
 ```bash
-# 克隆项目
-git clone https://github.com/你的用户名/my-picshare.git
-
-# 进入项目目录
-cd my-picshare
-
-# 创建虚拟环境
-python -m venv venv
-
-# 激活虚拟环境（Windows）
-venv\Scripts\activate
-# 或 Mac/Linux
-source venv/bin/activate
-
-# 安装依赖
-pip install -r requirements.txt
-
-# 运行网站
-python app.py
+git clone https://github.com/icebreak119/pic-share-website.git
+cd pic-share-website
