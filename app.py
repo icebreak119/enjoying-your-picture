@@ -1,6 +1,6 @@
 """
 我的图片分享网站 - 主程序文件
-已修复Railway部署问题
+已修复部署和模板问题
 """
 
 from flask import Flask, render_template, request, redirect, url_for, flash, send_from_directory
@@ -10,37 +10,23 @@ from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 
-# 创建Flask应用 - 关键修改：指定静态文件路径
-app = Flask(__name__, static_url_path='/static', static_folder='static')
+# 创建Flask应用 - 关键修改
+app = Flask(__name__, static_folder='static', static_url_path='/static')
+
+# 基础配置
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-this-in-production')
-app.config['UPLOAD_FOLDER'] = 'static/uploads'  # 上传文件保存的文件夹
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 限制上传大小为16MB
-app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif', 'webp'}  # 允许的文件类型
-
-# 处理上传文件的访问
-@app.route('/uploads/<path:filename>')
-def uploaded_file(filename):
-    """提供上传的图片文件"""
-    try:
-        return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
-    except:
-        # 如果文件不存在，返回默认图片
-        return redirect('https://via.placeholder.com/300x200/cccccc/969696?text=图片未找到')
-
-# 健康检查路由
-@app.route('/health')
-def health_check():
-    """健康检查路由，用于Railway监控"""
-    return 'OK', 200
+app.config['UPLOAD_FOLDER'] = 'static/uploads'
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB
+app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
 # 初始化Flask-Login
 login_manager = LoginManager()
 login_manager.init_app(app)
-login_manager.login_view = 'login'  # 设置登录页面的路由
+login_manager.login_view = 'login'
 login_manager.login_message = '请先登录以访问此页面。'
 login_manager.login_message_category = 'warning'
 
-# 用户类（简化的内存存储版本）
+# 用户类
 class User(UserMixin):
     def __init__(self, id, username, password_hash):
         self.id = id
@@ -59,24 +45,22 @@ class Image:
         self.likes = 0
         self.created_at = datetime.now()
 
-# 模拟数据库（实际项目要用真实数据库）
-# 用户数据
+# 内存存储（生产环境请换成数据库）
 users = {
     1: User(1, 'admin', generate_password_hash('admin123')),
     2: User(2, 'test', generate_password_hash('test123'))
 }
 
-# 图片数据
 images = [
     Image(1, 'example1.jpg', '美丽的风景', '这是一张美丽的风景图片，拍摄于山间。', 1),
     Image(2, 'example2.jpg', '可爱的小猫', '一只可爱的小猫在玩耍。', 2)
 ]
 
-# 为示例图片添加一些点赞
+# 设置示例图片的点赞数
 images[0].likes = 5
 images[1].likes = 3
 
-# 添加上下文处理器
+# 添加上下文处理器 - 解决 now.year 错误
 @app.context_processor
 def inject_now():
     """注入当前时间到所有模板"""
@@ -92,17 +76,25 @@ def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
 
+# 健康检查路由（给部署平台用）
+@app.route('/health')
+def health_check():
+    return 'OK', 200
+
+# 提供上传的图片文件
+@app.route('/uploads/<filename>')
+def uploaded_file(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
 @app.route('/')
 def index():
     """首页 - 显示所有图片"""
-    # 按创建时间倒序排列（最新的在前面）
     sorted_images = sorted(images, key=lambda x: x.created_at, reverse=True)
     return render_template('index.html', images=sorted_images)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     """登录页面"""
-    # 如果用户已经登录，重定向到首页
     if current_user.is_authenticated:
         return redirect(url_for('index'))
 
@@ -130,7 +122,6 @@ def login():
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     """注册页面"""
-    # 如果用户已经登录，重定向到首页
     if current_user.is_authenticated:
         return redirect(url_for('index'))
 
@@ -179,19 +170,16 @@ def logout():
 def upload():
     """上传图片页面"""
     if request.method == 'POST':
-        # 检查是否有文件被上传
         if 'file' not in request.files:
             flash('没有选择文件。', 'danger')
             return redirect(request.url)
 
         file = request.files['file']
 
-        # 如果用户没有选择文件
         if file.filename == '':
             flash('没有选择文件。', 'danger')
             return redirect(request.url)
 
-        # 检查文件类型
         if file and allowed_file(file.filename):
             # 安全地获取文件名
             filename = secure_filename(file.filename)
@@ -321,16 +309,19 @@ def internal_server_error(error):
     """500错误页面"""
     return render_template('index.html', error_500=True), 500
 
-
 if __name__ == '__main__':
     # 确保上传文件夹存在
-    if not os.path.exists(app.config['UPLOAD_FOLDER']):
-        os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+    upload_folder = app.config['UPLOAD_FOLDER']
+    if not os.path.exists(upload_folder):
+        os.makedirs(upload_folder, exist_ok=True)
 
-    # 从环境变量获取端口，没有则用5000
+    # 从环境变量获取端口，适应各种部署平台
     port = int(os.environ.get('PORT', 5000))
-
-    # 生产环境关闭debug
     debug = os.environ.get('FLASK_ENV') == 'development'
 
-    app.run(host='0.0.0.0', port=port, debug=debug)
+    app.run(
+        host='0.0.0.0',
+        port=port,
+        debug=debug,
+        threaded=True
+    )
