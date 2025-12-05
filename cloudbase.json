@@ -1,0 +1,13 @@
+{
+  "envId": "free:picshare-env-2gws7omq8e7f1da1",
+  "functionRoot": "cloudfunctions",
+  "functions": [
+    {
+      "name": "app",
+      "timeout": 10,  // 建议延长超时时间，避免请求卡顿
+      "envVariables": {},
+      "runtime": "Python3.7",
+      "handler": "index.main_handler"
+    }
+  ]
+}

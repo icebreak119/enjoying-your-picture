@@ -321,20 +321,16 @@ def internal_server_error(error):
     """500错误页面"""
     return render_template('index.html', error_500=True), 500
 
+
 if __name__ == '__main__':
     # 确保上传文件夹存在
-    upload_folder = app.config['UPLOAD_FOLDER']
-    if not os.path.exists(upload_folder):
-        os.makedirs(upload_folder, exist_ok=True)
+    if not os.path.exists(app.config['UPLOAD_FOLDER']):
+        os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-    # 获取环境变量中的端口，如果没有则使用5000
+    # 从环境变量获取端口，没有则用5000
     port = int(os.environ.get('PORT', 5000))
 
-    # 生产环境设置
-    debug_mode = os.environ.get('FLASK_ENV') != 'production'
+    # 生产环境关闭debug
+    debug = os.environ.get('FLASK_ENV') == 'development'
 
-    app.run(
-        host='0.0.0.0',
-        port=port,
-        debug=debug_mode
-    )
+    app.run(host='0.0.0.0', port=port, debug=debug)

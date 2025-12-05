@@ -1,0 +1,8 @@
+{
+  "envId": "picshare-env-2gws7omq8e7f1da1",
+  "region": "ap-shanghai",
+  "version": "2.0",
+  "$schema": "https://framework-1258016615.tcloudbaseapp.com/schema/latest.json",
+  "functionRoot": "./functions",
+  "functions": []
+}
