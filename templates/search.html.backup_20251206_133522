@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+
+{% block title %}搜索{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="my-4">搜索图片</h1>
+
+    <div class="row mb-4">
+        <div class="col-md-8 offset-md-2">
+            <form action="{{ url_for('search') }}" method="get">
+                <div class="input-group">
+                    <input type="text" class="form-control form-control-lg" name="q"
+                           value="{{ query }}" placeholder="搜索图片标题、描述或用户名...">
+                    <button class="btn btn-primary btn-lg" type="submit">
+                        <i class="bi bi-search"></i> 搜索
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% if query %}
+        <div class="alert alert-light">
+            <h5>搜索 "{{ query }}" 的结果：</h5>
+            {% if search_result and search_result.total > 0 %}
+                <p>找到 {{ search_result.total }} 个结果</p>
+            {% endif %}
+        </div>
+    {% endif %}
+
+    {% if search_result and search_result.items %}
+        <div class="row row-cols-1 row-cols-md-3 row-cols-lg-4 g-4">
+            {% for image in search_result.items %}
+            <div class="col">
+                <div class="card h-100 shadow-sm">
+                    <div style="height: 200px; overflow: hidden;">
+                        <a href="{{ url_for('image_detail', image_id=image.id) }}">
+                            {% if image.thumbnail_path %}
+                                <img src="{{ url_for('static', filename=image.thumbnail_path) }}"
+                                     class="card-img-top"
+                                     alt="{{ image.title }}"
+                                     style="width: 100%; height: 100%; object-fit: cover;"
+                                     onerror="this.onerror=null; this.src='{{ url_for('static', filename=image.file_path) }}';">
+                            {% else %}
+                                <img src="{{ url_for('static', filename=image.file_path) }}"
+                                     class="card-img-top"
+                                     alt="{{ image.title }}"
+                                     style="width: 100%; height: 100%; object-fit: cover;">
+                            {% endif %}
+                        </a>
+                    </div>
+                    <div class="card-body">
+                        <h6 class="card-title">{{ image.title if image.title else image.original_filename }}</h6>
+                        <p class="card-text small text-muted">
+                            {{ image.description[:60] if image.description else '暂无描述' }}{% if image.description and image.description|length > 60 %}...{% endif %}
+                        </p>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small class="text-muted">
+                                <i class="bi bi-person"></i> {{ image.author.username if image.author else image.username }}
+                            </small>
+                            <small class="text-muted">
+                                <i class="bi bi-eye"></i> {{ image.views }}
+                            </small>
+                        </div>
+                    </div>
+                    <div class="card-footer bg-transparent">
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('image_detail', image_id=image.id) }}" class="btn btn-sm btn-outline-primary">
+                                查看详情
+                            </a>
+                            <a href="{{ url_for('like', image_id=image.id) }}" class="btn btn-sm btn-outline-danger">
+                                <i class="bi bi-heart"></i> {{ image.likes }}
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- 分页 -->
+        {% if search_result.pages > 1 %}
+        <nav aria-label="搜索结果分页" class="mt-4">
+            <ul class="pagination justify-content-center">
+                <!-- 上一页 -->
+                {% if search_result.page > 1 %}
+                <li class="page-item">
+                    <a class="page-link" href="?q={{ query }}&page={{ search_result.page - 1 }}" aria-label="上一页">
+                        上一页
+                    </a>
+                </li>
+                {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link">上一页</span>
+                </li>
+                {% endif %}
+
+                <!-- 页码 -->
+                {% for page_num in range(1, search_result.pages + 1) %}
+                    {% if page_num == search_result.page %}
+                    <li class="page-item active">
+                        <span class="page-link">{{ page_num }}</span>
+                    </li>
+                    {% elif page_num >= search_result.page - 2 and page_num <= search_result.page + 2 %}
+                    <li class="page-item">
+                        <a class="page-link" href="?q={{ query }}&page={{ page_num }}">{{ page_num }}</a>
+                    </li>
+                    {% elif page_num == 1 %}
+                    <li class="page-item">
+                        <a class="page-link" href="?q={{ query }}&page=1">1</a>
+                    </li>
+                    {% elif page_num == search_result.pages %}
+                    <li class="page-item">
+                        <a class="page-link" href="?q={{ query }}&page={{ search_result.pages }}">{{ search_result.pages }}</a>
+                    </li>
+                    {% elif page_num == search_result.page - 3 or page_num == search_result.page + 3 %}
+                    <li class="page-item disabled">
+                        <span class="page-link">...</span>
+                    </li>
+                    {% endif %}
+                {% endfor %}
+
+                <!-- 下一页 -->
+                {% if search_result.page < search_result.pages %}
+                <li class="page-item">
+                    <a class="page-link" href="?q={{ query }}&page={{ search_result.page + 1 }}" aria-label="下一页">
+                        下一页
+                    </a>
+                </li>
+                {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link">下一页</span>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+
+    {% elif query %}
+        <div class="text-center py-5">
+            <div class="mb-4">
+                <i class="bi bi-search" style="font-size: 4rem; color: #6c757d;"></i>
+            </div>
+            <h3 class="text-muted mb-3">没有找到相关图片</h3>
+            <p class="lead mb-4">尝试使用其他关键词搜索，或上传新图片。</p>
+            {% if current_user.is_authenticated %}
+                <a href="/upload" class="btn btn-primary">
+                    <i class="bi bi-cloud-arrow-up"></i> 上传图片
+                </a>
+            {% else %}
+                <a href="/login" class="btn btn-primary">
+                    <i class="bi bi-box-arrow-in-right"></i> 登录后上传
+                </a>
+            {% endif %}
+        </div>
+    {% else %}
+        <div class="text-center py-5">
+            <div class="mb-4">
+                <i class="bi bi-search" style="font-size: 4rem; color: #6c757d;"></i>
+            </div>
+            <h3 class="text-muted mb-3">请输入搜索关键词</h3>
+            <p class="lead mb-4">在搜索框中输入关键词，查找您感兴趣的图片。</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

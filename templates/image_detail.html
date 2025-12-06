@@ -128,7 +128,7 @@
                         <img src="/static/uploads/{{ image.filename }}"
                              class="main-image"
                              alt="{{ image.title if image.title else image.original_filename }}"
-                             onerror="this.onerror=null;this.src='https://via.placeholder.com/800x600/cccccc/969696?text=图片加载失败';">
+                             onerror="this.onerror=null;this.src='https://via.placeholder.com/800x600/cccccc/969696?text=图片加载失败';">>
                     </div>
                 </div>
 
@@ -191,11 +191,16 @@
                                 </a>
                             {% endif %}
 
-                            <!-- 修复删除按钮：使用POST方法，路由与app.py匹配 -->
-                            {% if current_user.is_authenticated and current_user.id == image.user_id %}
+                            <!-- 修复删除按钮：管理员也可以看到删除按钮 -->
+                            {% if current_user.is_authenticated and (current_user.id == image.user_id or current_user.is_admin) %}
                                 <form action="/delete/{{ image.id }}" method="POST" onsubmit="return confirm('确定要删除这张图片吗？此操作不可撤销！')">
                                     <button type="submit" class="btn btn-danger w-100">
-                                        <i class="bi bi-trash"></i> 删除图片
+                                        <i class="bi bi-trash"></i>
+                                        {% if current_user.id == image.user_id %}
+                                            删除我的图片
+                                        {% else %}
+                                            管理员删除
+                                        {% endif %}
                                     </button>
                                 </form>
                             {% endif %}

@@ -9,38 +9,151 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="icon" type="image/x-icon" href="https://img.icons8.com/color/48/000000/image--v1.png">
     <style>
+        /* 动态渐变背景 */
+        body {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+            position: relative;
+        }
+
+        /* 背景动画 */
+        @keyframes gradientBG {
+            0% {
+                background-position: 0% 50%;
+            }
+            50% {
+                background-position: 100% 50%;
+            }
+            100% {
+                background-position: 0% 50%;
+            }
+        }
+
+        /* 半透明遮罩层，确保内容可读 */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.85);
+            z-index: -1;
+        }
+
+        /* 主要内容区域半透明 */
+        main.container {
+            background: rgba(255, 255, 255, 0.92);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 5px 25px rgba(0, 0, 0, 0.1);
+            margin-top: 30px;
+            margin-bottom: 30px;
+        }
+
+        /* 导航栏半透明 */
+        .navbar {
+            background: rgba(33, 37, 41, 0.95) !important;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 2px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        /* 卡片半透明 */
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15) !important;
+        }
+
+        /* 页脚半透明 */
+        .footer {
+            background: rgba(33, 37, 41, 0.95) !important;
+            backdrop-filter: blur(10px);
+        }
+
+        /* 警告框半透明 */
+        .alert {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        /* Jumbotron 半透明 */
+        .jumbotron {
+            background: rgba(248, 249, 250, 0.95) !important;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        /* 按钮半透明效果 */
+        .btn-primary, .btn-secondary, .btn-danger, .btn-outline-primary, .btn-outline-secondary {
+            backdrop-filter: blur(5px);
+        }
+
+        /* 分页半透明 */
+        .pagination .page-item .page-link {
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .pagination .page-item.active .page-link {
+            background: rgba(13, 110, 253, 0.9);
+        }
+
+        /* 滚动条美化 */
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 5px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        /* 原有样式保留 */
         .text-truncate-2 {
             display: -webkit-box;
             -webkit-line-clamp: 2;
             -webkit-box-orient: vertical;
             overflow: hidden;
         }
+
         .img-container {
             height: 200px;
             overflow: hidden;
+            border-radius: 10px 10px 0 0;
         }
+
         .img-container img {
             width: 100%;
             height: 100%;
             object-fit: cover;
-            transition: transform 0.3s;
+            transition: transform 0.5s ease;
         }
+
         .img-container img:hover {
-            transform: scale(1.05);
-        }
-        .navbar {
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        .footer {
-            margin-top: auto;
-        }
-        body {
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
-        main {
-            flex: 1;
+            transform: scale(1.08);
         }
     </style>
 </head>
@@ -49,10 +162,24 @@
     {% from "_macros.html" import show_image %}
 
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+        <!-- 导航栏内容保持不变 -->
         <div class="container">
             <a class="navbar-brand" href="/">
                 <i class="bi bi-images"></i> PicShare
             </a>
+
+            <!-- 桌面端搜索框 -->
+            <form class="d-none d-md-flex me-3" action="/search" method="get">
+                <div class="input-group input-group-sm">
+                    <input type="text" class="form-control"
+                           name="q" placeholder="搜索图片..."
+                           aria-label="搜索" style="width: 200px;">
+                    <button class="btn btn-outline-light" type="submit">
+                        <i class="bi bi-search"></i>
+                    </button>
+                </div>
+            </form>
+
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
@@ -152,9 +279,8 @@
         {% else %}
             <div class="jumbotron bg-light p-5 rounded-3 mb-4">
                 <h1 class="display-4">欢迎来到 PicShare!</h1>
-                <p class="lead">一个使用MySQL持久化存储的图片分享社区。</p>
+                <p class="lead" style="color: #ff4d6d;">我的镜头里，主角永远是你</p>
                 <hr class="my-4">
-                <p>上传、分享、发现精彩的图片。所有数据都安全存储在MySQL数据库中。</p>
                 {% if not current_user.is_authenticated %}
                     <a class="btn btn-primary btn-lg me-2" href="/register" role="button">
                         <i class="bi bi-person-plus"></i> 立即加入
@@ -165,61 +291,224 @@
                 </a>
             </div>
 
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h2><i class="bi bi-images"></i> 最新图片</h2>
-                <span class="badge bg-primary">{{ images|length }} 张图片</span>
+            <!-- 移动端搜索框 -->
+            <div class="d-md-none mb-4">
+                <form action="/search" method="get">
+                    <div class="input-group">
+                        <input type="text" class="form-control"
+                               name="q" placeholder="搜索图片标题、描述或作者...">
+                        <button class="btn btn-primary" type="submit">
+                            <i class="bi bi-search"></i> 搜索
+                        </button>
+                    </div>
+                </form>
             </div>
 
-            {% if images %}
-                <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
-                    {% for image in images %}
-                    <div class="col">
-                        <div class="card h-100 shadow-sm">
-                            <div class="img-container">
-                                <a href="/image/{{ image.id }}">
-                                    {{ show_image(image, 'card-img-top') }}
-                                </a>
-                            </div>
-                            <div class="card-body">
-                                <h5 class="card-title">{{ image.title if image.title else image.original_filename }}</h5>
-                                <p class="card-text text-truncate-2">{{ image.description if image.description else '暂无描述' }}</p>
-                            </div>
-                            <div class="card-footer bg-transparent">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <a href="/like/{{ image.id }}" class="btn btn-outline-primary btn-sm">
-                                            <i class="bi bi-hand-thumbs-up"></i> {{ image.likes }}
-                                        </a>
-                                        <a href="/image/{{ image.id }}" class="btn btn-outline-secondary btn-sm ms-1">
-                                            <i class="bi bi-eye"></i> {{ image.views }}
-                                        </a>
-                                    </div>
-                                    <small class="text-muted">
-                                        <i class="bi bi-calendar"></i> {{ image.upload_time.strftime('%Y-%m-%d') if image.upload_time else '未知时间' }}
-                                    </small>
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="bi bi-images"></i> 最新图片</h2>
+                <span class="badge bg-primary">
+                    {% if images is mapping and 'total' in images %}
+                        共 {{ images.total }} 张图片 (第 {{ images.page }}/{{ images.pages }} 页)
+                    {% elif images is iterable and images is not string %}
+                        {{ images|length }} 张图片
+                    {% else %}
+                        0 张图片
+                    {% endif %}
+                </span>
+            </div>
+
+            {% if images is mapping and 'items' in images %}
+                <!-- 分页模式：images 是字典，包含 items -->
+                {% if images.items %}
+                    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+                        {% for image in images.items %}
+                        <div class="col">
+                            <div class="card h-100 shadow-sm">
+                                <div class="img-container">
+                                    <a href="/image/{{ image.id }}">
+                                        {{ show_image(image, 'card-img-top') }}
+                                    </a>
                                 </div>
-                                {% if current_user.is_authenticated and current_user.id == image.user_id %}
-                                <!-- 修复删除按钮：使用POST方法，路由与app.py匹配 -->
-                                <form action="/delete/{{ image.id }}" method="POST" class="mt-2" onsubmit="return confirm('确定要删除这张图片吗？');">
-                                    <button type="submit" class="btn btn-danger btn-sm w-100">
-                                        <i class="bi bi-trash"></i> 删除
-                                    </button>
-                                </form>
-                                {% endif %}
+                                <div class="card-body">
+                                    <h5 class="card-title">{{ image.title if image.title else image.original_filename }}</h5>
+                                    <p class="card-text text-truncate-2">{{ image.description if image.description else '暂无描述' }}</p>
+                                </div>
+                                <div class="card-footer bg-transparent">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <a href="/like/{{ image.id }}" class="btn btn-outline-primary btn-sm">
+                                                <i class="bi bi-hand-thumbs-up"></i> {{ image.likes }}
+                                            </a>
+                                            <a href="/image/{{ image.id }}" class="btn btn-outline-secondary btn-sm ms-1">
+                                                <i class="bi bi-eye"></i> {{ image.views }}
+                                            </a>
+                                        </div>
+                                        <small class="text-muted">
+                                            <i class="bi bi-calendar"></i> {{ image.upload_time.strftime('%Y-%m-%d') if image.upload_time else '未知时间' }}
+                                        </small>
+                                    </div>
+                                    <!-- 修复删除按钮：管理员也可以删除 -->
+                                    {% if current_user.is_authenticated and (current_user.id == image.user_id or current_user.is_admin) %}
+                                    <form action="/delete/{{ image.id }}" method="POST" class="mt-2" onsubmit="return confirm('确定要删除这张图片吗？');">
+                                        <button type="submit" class="btn btn-danger btn-sm w-100">
+                                            <i class="bi bi-trash"></i>
+                                            {% if current_user.id == image.user_id %}
+                                                删除
+                                            {% else %}
+                                                管理员删除
+                                            {% endif %}
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                </div>
                             </div>
                         </div>
+                        {% endfor %}
                     </div>
-                    {% endfor %}
-                </div>
+
+                    <!-- 分页导航 -->
+                    {% if images.pages > 1 %}
+                    <nav aria-label="图片分页" class="mt-4">
+                        <ul class="pagination justify-content-center">
+                            <!-- 上一页 -->
+                            {% if images.page > 1 %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ images.page - 1 }}" aria-label="上一页">
+                                    <i class="bi bi-chevron-left"></i> 上一页
+                                </a>
+                            </li>
+                            {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">
+                                    <i class="bi bi-chevron-left"></i> 上一页
+                                </span>
+                            </li>
+                            {% endif %}
+
+                            <!-- 页码 -->
+                            {% for page_num in range(1, images.pages + 1) %}
+                                {% if page_num == images.page %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ page_num }}</span>
+                                </li>
+                                {% elif page_num >= images.page - 2 and page_num <= images.page + 2 %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_num }}">{{ page_num }}</a>
+                                </li>
+                                {% elif page_num == 1 %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=1">1</a>
+                                </li>
+                                {% elif page_num == images.pages %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ images.pages }}">{{ images.pages }}</a>
+                                </li>
+                                {% elif page_num == images.page - 3 or page_num == images.page + 3 %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">...</span>
+                                </li>
+                                {% endif %}
+                            {% endfor %}
+
+                            <!-- 下一页 -->
+                            {% if images.page < images.pages %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ images.page + 1 }}" aria-label="下一页">
+                                    下一页 <i class="bi bi-chevron-right"></i>
+                                </a>
+                            </li>
+                            {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">
+                                    下一页 <i class="bi bi-chevron-right"></i>
+                                </span>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+                {% else %}
+                    <div class="text-center py-5">
+                        <div class="mb-4">
+                            <i class="bi bi-images" style="font-size: 4rem; color: #6c757d;"></i>
+                        </div>
+                        <h3 class="text-muted mb-3">还没有图片</h3>
+                        <p class="lead mb-4">成为第一个分享图片的人吧！</p>
+                        <a href="/upload" class="btn btn-primary btn-lg">
+                            <i class="bi bi-cloud-arrow-up"></i> 上传第一张图片
+                        </a>
+                    </div>
+                {% endif %}
+
+            {% elif images is iterable and images is not string %}
+                <!-- 旧模式：images 是列表 -->
+                {% if images %}
+                    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+                        {% for image in images %}
+                        <div class="col">
+                            <div class="card h-100 shadow-sm">
+                                <div class="img-container">
+                                    <a href="/image/{{ image.id }}">
+                                        {{ show_image(image, 'card-img-top') }}
+                                    </a>
+                                </div>
+                                <div class="card-body">
+                                    <h5 class="card-title">{{ image.title if image.title else image.original_filename }}</h5>
+                                    <p class="card-text text-truncate-2">{{ image.description if image.description else '暂无描述' }}</p>
+                                </div>
+                                <div class="card-footer bg-transparent">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <a href="/like/{{ image.id }}" class="btn btn-outline-primary btn-sm">
+                                                <i class="bi bi-hand-thumbs-up"></i> {{ image.likes }}
+                                            </a>
+                                            <a href="/image/{{ image.id }}" class="btn btn-outline-secondary btn-sm ms-1">
+                                                <i class="bi bi-eye"></i> {{ image.views }}
+                                            </a>
+                                        </div>
+                                        <small class="text-muted">
+                                            <i class="bi bi-calendar"></i> {{ image.upload_time.strftime('%Y-%m-%d') if image.upload_time else '未知时间' }}
+                                        </small>
+                                    </div>
+                                    <!-- 修复删除按钮：管理员也可以删除 -->
+                                    {% if current_user.is_authenticated and (current_user.id == image.user_id or current_user.is_admin) %}
+                                    <form action="/delete/{{ image.id }}" method="POST" class="mt-2" onsubmit="return confirm('确定要删除这张图片吗？');">
+                                        <button type="submit" class="btn btn-danger btn-sm w-100">
+                                            <i class="bi bi-trash"></i>
+                                            {% if current_user.id == image.user_id %}
+                                                删除
+                                            {% else %}
+                                                管理员删除
+                                            {% endif %}
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <div class="mb-4">
+                            <i class="bi bi-images" style="font-size: 4rem; color: #6c757d;"></i>
+                        </div>
+                        <h3 class="text-muted mb-3">还没有图片</h3>
+                        <p class="lead mb-4">成为第一个分享图片的人吧！</p>
+                        <a href="/upload" class="btn btn-primary btn-lg">
+                            <i class="bi bi-cloud-arrow-up"></i> 上传第一张图片
+                        </a>
+                    </div>
+                {% endif %}
             {% else %}
                 <div class="text-center py-5">
                     <div class="mb-4">
                         <i class="bi bi-images" style="font-size: 4rem; color: #6c757d;"></i>
                     </div>
-                    <h3 class="text-muted mb-3">还没有图片</h3>
-                    <p class="lead mb-4">成为第一个分享图片的人吧！</p>
-                    <a href="/upload" class="btn btn-primary btn-lg">
-                        <i class="bi bi-cloud-arrow-up"></i> 上传第一张图片
+                    <h3 class="text-muted mb-3">数据加载异常</h3>
+                    <p class="lead mb-4">无法正确加载图片数据。</p>
+                    <a href="/" class="btn btn-primary btn-lg">
+                        <i class="bi bi-arrow-clockwise"></i> 刷新页面
                     </a>
                 </div>
             {% endif %}
@@ -235,7 +524,7 @@
                 </div>
                 <div class="col-md-6 text-md-end">
                     <p class="mb-0">
-                        &copy; 2023 图片分享站
+                        &copy; 2025 图片分享站
                         <span class="mx-2">|</span>
                         用户：{% if current_user.is_authenticated %}{{ current_user.username }}{% else %}未登录{% endif %}
                     </p>
@@ -250,6 +539,7 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // 自动关闭警告框
             setTimeout(function() {
                 var alerts = document.querySelectorAll('.alert');
                 alerts.forEach(function(alert) {
@@ -266,6 +556,26 @@
                     }
                 };
             });
+
+            // 动态背景的随机颜色变化
+            const colors = [
+                ['#ee7752', '#e73c7e', '#23a6d5', '#23d5ab'],
+                ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4'],
+                ['#fad0c4', '#ffd1ff', '#a1c4fd', '#c2e9fb'],
+                ['#ffecd2', '#fcb69f', '#a6c1ee', '#fbc2eb']
+            ];
+
+            let currentColorSet = 0;
+
+            // 每30秒切换一次渐变颜色
+            setInterval(() => {
+                const body = document.body;
+                currentColorSet = (currentColorSet + 1) % colors.length;
+                const newColors = colors[currentColorSet];
+
+                body.style.background = `linear-gradient(-45deg, ${newColors[0]}, ${newColors[1]}, ${newColors[2]}, ${newColors[3]})`;
+                body.style.backgroundSize = '400% 400%';
+            }, 30000);
         });
     </script>
 </body>

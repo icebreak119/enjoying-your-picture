@@ -1,0 +1,8 @@
+# 1. 添加所有更改
+git add .
+
+# 2. 提交更改
+git commit -m "更新描述：修复图片显示问题"
+
+# 3. 推送到GitHub
+git push

@@ -1,6 +1,7 @@
 """
 图片分享网站 - 适配pic_share_db数据库结构
 修复Flask-Login的is_active属性问题
+修复搜索功能问题
 """
 
 from flask import Flask, render_template, request, redirect, url_for, flash, send_from_directory
@@ -20,7 +21,6 @@ import math
 app = Flask(__name__, static_folder='static', static_url_path='/static')
 
 # ====================== 2. MySQL数据库配置 ======================
-# 使用您创建的pic_share_user用户
 DB_CONFIG = {
     'host': 'localhost',
     'user': 'pic_share_user',
@@ -58,7 +58,6 @@ def get_db_connection():
         return conn
     except Error as e:
         logger.error(f"数据库连接失败: {e}")
-        # 尝试使用root用户作为备选
         try:
             backup_config = DB_CONFIG.copy()
             backup_config['user'] = 'root'
@@ -96,6 +95,8 @@ def execute_query(query, params=None, fetch_one=False, fetch_all=False, commit=F
         return result
     except Error as e:
         logger.error(f"SQL执行失败: {e}")
+        logger.error(f"SQL查询: {query}")
+        logger.error(f"参数: {params}")
         if conn:
             conn.rollback()
         return None
@@ -105,7 +106,7 @@ def execute_query(query, params=None, fetch_one=False, fetch_all=False, commit=F
         if conn:
             conn.close()
 
-# ====================== 7. 数据模型 - 修复版 ======================
+# ====================== 7. 数据模型 ======================
 class User(UserMixin):
     def __init__(self, id, username, email, password_hash, created_at=None, is_active=True):
         self.id = id
@@ -113,12 +114,17 @@ class User(UserMixin):
         self.email = email
         self.password_hash = password_hash
         self.created_at = created_at
-        self._is_active = is_active  # 使用私有变量存储
+        self._is_active = is_active
 
-    # 将is_active定义为属性
     @property
     def is_active(self):
         return self._is_active
+
+    @property
+    def is_admin(self):
+        """判断是否为管理员"""
+        # 用户名为admin或ID为1的用户视为管理员
+        return self.username == 'admin' or self.id == 1
 
     @is_active.setter
     def is_active(self, value):
@@ -209,13 +215,11 @@ def create_thumbnail(image_path, max_size=(300, 200)):
             img.thumbnail(max_size)
             thumbnail_name = f"thumb_{os.path.basename(image_path)}"
             thumbnail_path = os.path.join(app.config['UPLOAD_FOLDER'], thumbnail_name)
-            # 转换为RGB模式（如果是RGBA）
             if img.mode in ('RGBA', 'LA'):
                 background = Image.new('RGB', img.size, (255, 255, 255))
                 background.paste(img, mask=img.split()[-1])
                 img = background
 
-            # 根据文件扩展名保存
             if thumbnail_name.lower().endswith('.jpg') or thumbnail_name.lower().endswith('.jpeg'):
                 img.save(thumbnail_path, 'JPEG', quality=85)
             else:
@@ -239,7 +243,7 @@ def index():
             SELECT i.*, u.username 
             FROM images i 
             LEFT JOIN users u ON i.user_id = u.id 
-            WHERE i.is_active = TRUE
+            WHERE i.is_active = TRUE OR i.is_active IS NULL
             ORDER BY i.upload_time DESC
             LIMIT 30
         """
@@ -248,7 +252,6 @@ def index():
         images = []
         if results:
             for row in results:
-                # 处理文件路径
                 file_path = row['file_path']
                 if file_path.startswith('/'):
                     file_path = file_path[1:]
@@ -325,7 +328,6 @@ def register():
         elif User.get_by_username(username):
             flash('用户名已存在！', 'danger')
         else:
-            # 检查邮箱是否已存在
             existing_email = User.get_by_email(email)
             if existing_email:
                 flash('邮箱已被注册！', 'danger')
@@ -363,37 +365,31 @@ def upload():
             return redirect(request.url)
 
         if file and allowed_file(file.filename):
-            # 生成唯一文件名
             original_filename = secure_filename(file.filename)
             ext = original_filename.rsplit('.', 1)[1].lower()
             unique_filename = f"{uuid.uuid4().hex}.{ext}"
 
             ensure_upload_folder()
 
-            # 保存文件
             filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
             file.save(filepath)
 
-            # 创建缩略图
             thumbnail_name = create_thumbnail(filepath)
 
-            # 获取文件信息
             file_size = os.path.getsize(filepath)
             mime_type = file.content_type or f"image/{ext}"
 
-            # 获取表单数据
             title = request.form.get('title', '').strip()
             if not title:
                 title = original_filename.rsplit('.', 1)[0]
 
             description = request.form.get('description', '').strip()
 
-            # 插入数据到数据库
             insert_query = """
                 INSERT INTO images 
                 (filename, original_name, file_path, file_size, mime_type, 
-                 title, description, user_id, upload_time, views, likes)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                 title, description, user_id, upload_time, views, likes, is_active)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """
 
             params = (
@@ -406,14 +402,14 @@ def upload():
                 description,
                 current_user.id,
                 datetime.now(),
-                0,  # views
-                0   # likes
+                0,
+                0,
+                True
             )
 
             result = execute_query(insert_query, params, commit=True)
 
             if result:
-                # 如果有缩略图，更新缩略图路径
                 if thumbnail_name:
                     update_query = "UPDATE images SET thumbnail_path = %s WHERE id = %s"
                     execute_query(update_query, (f"uploads/{thumbnail_name}", result), commit=True)
@@ -442,11 +438,9 @@ def image_detail(image_id):
         flash('图片不存在！', 'danger')
         return redirect(url_for('index'))
 
-    # 增加浏览次数
     update_query = "UPDATE images SET views = views + 1 WHERE id = %s"
     execute_query(update_query, (image_id,), commit=True)
 
-    # 处理文件路径
     file_path = result['file_path']
     if file_path.startswith('/'):
         file_path = file_path[1:]
@@ -455,7 +449,6 @@ def image_detail(image_id):
     if thumbnail_path and thumbnail_path.startswith('/'):
         thumbnail_path = thumbnail_path[1:]
 
-    # 构造图片对象
     image = {
         'id': result['id'],
         'filename': result['filename'],
@@ -480,7 +473,6 @@ def image_detail(image_id):
 @login_required
 def like_image(image_id):
     """图片点赞"""
-    # 检查图片是否存在
     check_query = "SELECT * FROM images WHERE id = %s"
     image = execute_query(check_query, (image_id,), fetch_one=True)
 
@@ -488,14 +480,12 @@ def like_image(image_id):
         flash('图片不存在！', 'danger')
         return redirect(url_for('index'))
 
-    # 检查是否已经点赞
     check_like_query = """
         SELECT id FROM likes WHERE user_id = %s AND image_id = %s
     """
     existing_like = execute_query(check_like_query, (current_user.id, image_id), fetch_one=True)
 
     if existing_like:
-        # 已经点赞，取消点赞
         delete_like_query = "DELETE FROM likes WHERE user_id = %s AND image_id = %s"
         execute_query(delete_like_query, (current_user.id, image_id), commit=True)
 
@@ -503,7 +493,6 @@ def like_image(image_id):
         execute_query(update_query, (image_id,), commit=True)
         flash('已取消点赞！', 'info')
     else:
-        # 添加点赞
         like_query = "INSERT INTO likes (user_id, image_id) VALUES (%s, %s)"
         execute_query(like_query, (current_user.id, image_id), commit=True)
 
@@ -516,7 +505,7 @@ def like_image(image_id):
 @app.route('/delete/<int:image_id>', methods=['POST'])
 @login_required
 def delete_image(image_id):
-    """删除图片"""
+    """删除图片 - 管理员可以删除任何图片"""
     query = "SELECT * FROM images WHERE id = %s"
     result = execute_query(query, (image_id,), fetch_one=True)
 
@@ -524,30 +513,26 @@ def delete_image(image_id):
         flash('图片不存在！', 'danger')
         return redirect(url_for('index'))
 
-    # 权限校验
-    if current_user.id != result['user_id'] and current_user.id != 1:
+    # 权限检查：管理员可以删除任何图片，非管理员只能删除自己的图片
+    if current_user.id != result['user_id'] and not current_user.is_admin:
         flash('无权限删除该图片！', 'danger')
         return redirect(url_for('image_detail', image_id=image_id))
 
     try:
-        # 删除文件
         filename = result['filename']
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         if os.path.exists(filepath):
             os.remove(filepath)
 
-        # 删除缩略图
         if result.get('thumbnail_path'):
             thumb_filename = result['thumbnail_path'].split('/')[-1]
             thumb_path = os.path.join(app.config['UPLOAD_FOLDER'], thumb_filename)
             if os.path.exists(thumb_path):
                 os.remove(thumb_path)
 
-        # 删除数据库记录
         delete_query = "DELETE FROM images WHERE id = %s"
         execute_query(delete_query, (image_id,), commit=True)
 
-        # 删除点赞记录
         delete_likes_query = "DELETE FROM likes WHERE image_id = %s"
         execute_query(delete_likes_query, (image_id,), commit=True)
 
@@ -572,7 +557,6 @@ def my_images():
     images = []
     if results:
         for row in results:
-            # 处理文件路径
             file_path = row['file_path']
             if file_path.startswith('/'):
                 file_path = file_path[1:]
@@ -602,34 +586,53 @@ def uploaded_file(filename):
     """提供上传图片的访问"""
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
-# ====================== 12. 搜索功能 ======================
+
+# ====================== 12. 搜索功能（终极修复版） ======================
 @app.route('/search')
 def search():
-    query = request.args.get('q', '').strip()
-    page = request.args.get('page', 1, type=int)
-    per_page = 12
-
-    if not query:
-        return render_template('search.html', query=query, images={'items': []})
-
+    """搜索功能 - 多字段搜索（标题、描述、用户名）和分页"""
     try:
+        query_text = request.args.get('q', '').strip()
+        page = request.args.get('page', 1, type=int)
+        per_page = 12
+
+        logger.info(f"搜索请求: query='{query_text}', page={page}")
+
+        # 准备空的搜索结果结构 - 使用非常独特的变量名
+        search_result_data = {
+            'items_list': [],
+            'current_page': page,
+            'total_pages': 1,
+            'total_count': 0,
+            'per_page': per_page
+        }
+
+        # 如果搜索关键词为空
+        if not query_text:
+            logger.info("空搜索请求")
+            return render_template('search.html',
+                                   search_query=query_text,
+                                   result_data=search_result_data)
+
+        # 执行搜索
+        search_param = f"%{query_text}%"
+        offset = (page - 1) * per_page
+
+        # 搜索查询SQL
         search_query = """
             SELECT i.*, u.username 
             FROM images i 
             LEFT JOIN users u ON i.user_id = u.id 
-            WHERE i.is_active = TRUE
-            AND (i.title LIKE %s OR i.description LIKE %s OR u.username LIKE %s)
+            WHERE (i.title LIKE %s OR i.description LIKE %s OR u.username LIKE %s)
             ORDER BY i.upload_time DESC
-            LIMIT %s OFFSET %s
+            LIMIT %s, %s
         """
 
-        search_param = f"%{query}%"
-        offset = (page - 1) * per_page
-        params = (search_param, search_param, search_param, per_page, offset)
-
+        params = (search_param, search_param, search_param, offset, per_page)
         results = execute_query(search_query, params, fetch_all=True)
 
-        images = []
+        # 处理搜索结果
+        images_list = []
         if results:
             for row in results:
                 # 处理文件路径
@@ -641,7 +644,8 @@ def search():
                 if thumbnail_path and thumbnail_path.startswith('/'):
                     thumbnail_path = thumbnail_path[1:]
 
-                image = {
+                # 构建图片对象
+                image_obj = {
                     'id': row['id'],
                     'filename': row['filename'],
                     'original_filename': row['original_name'],
@@ -655,35 +659,51 @@ def search():
                     'thumbnail_path': thumbnail_path,
                     'author': {'username': row['username']}
                 }
-                images.append(image)
+                images_list.append(image_obj)
 
         # 获取总数
         count_query = """
-            SELECT COUNT(*) as total 
+            SELECT COUNT(*) as total_count 
             FROM images i 
             LEFT JOIN users u ON i.user_id = u.id 
-            WHERE i.is_active = TRUE
-            AND (i.title LIKE %s OR i.description LIKE %s OR u.username LIKE %s)
+            WHERE (i.title LIKE %s OR i.description LIKE %s OR u.username LIKE %s)
         """
         count_result = execute_query(count_query, (search_param, search_param, search_param), fetch_one=True)
-        total = count_result['total'] if count_result else 0
 
-        # 创建分页对象
-        pagination = {
-            'page': page,
-            'per_page': per_page,
-            'total': total,
-            'pages': math.ceil(total / per_page) if total > 0 else 1,
-            'items': images
-        }
+        total = count_result['total_count'] if count_result else 0
 
-        return render_template('search.html', query=query, images=pagination)
+        # 计算总页数
+        pages = math.ceil(total / per_page) if total > 0 else 1
+
+        # 更新搜索数据
+        search_result_data.update({
+            'items_list': images_list,
+            'current_page': page,
+            'total_pages': pages,
+            'total_count': total
+        })
+
+        logger.info(f"搜索成功: 关键词='{query_text}', 结果数={total}, 当前页={page}, 总页数={pages}")
+        return render_template('search_simple.html',
+                               search_query=query_text,
+                               result_data=search_result_data)
 
     except Exception as e:
-        logger.error(f"搜索失败: {e}")
-        return render_template('search.html', query=query, images={'items': []})
+        logger.error(f"搜索失败: {e}", exc_info=True)
+        flash('搜索时发生错误，请稍后重试', 'danger')
 
-# ====================== 13. 错误处理 ======================
+        # 返回错误时的空结果
+        error_data = {
+            'items_list': [],
+            'current_page': 1,
+            'total_pages': 1,
+            'total_count': 0,
+            'per_page': 12
+        }
+        return render_template('search.html',
+                               search_query=query_text,
+                               result_data=error_data)
+
 @app.errorhandler(404)
 def page_not_found(error):
     return render_template('index.html', error_404=True), 404
@@ -702,13 +722,12 @@ def init_app():
     """初始化应用"""
     ensure_upload_folder()
 
-    # 检查并创建likes表
     try:
+        # 检查并创建likes表
         check_likes_query = "SHOW TABLES LIKE 'likes'"
         likes_table = execute_query(check_likes_query, fetch_one=True)
 
         if not likes_table:
-            # 创建likes表
             create_likes_query = """
                 CREATE TABLE IF NOT EXISTS likes (
                     id INT PRIMARY KEY AUTO_INCREMENT,
@@ -728,12 +747,29 @@ def init_app():
         has_likes_column = execute_query(check_likes_column, fetch_one=True)
 
         if not has_likes_column:
-            # 添加likes字段
             alter_query = "ALTER TABLE images ADD COLUMN likes INT DEFAULT 0"
             execute_query(alter_query, commit=True)
             logger.info("为images表添加likes字段成功")
 
-        logger.info("数据库连接正常")
+        # 检查images表是否有is_active字段
+        check_is_active_column = "SHOW COLUMNS FROM images LIKE 'is_active'"
+        has_is_active_column = execute_query(check_is_active_column, fetch_one=True)
+
+        if not has_is_active_column:
+            alter_query = "ALTER TABLE images ADD COLUMN is_active BOOLEAN DEFAULT TRUE"
+            execute_query(alter_query, commit=True)
+            logger.info("为images表添加is_active字段成功")
+
+        # 检查images表是否有thumbnail_path字段
+        check_thumbnail_column = "SHOW COLUMNS FROM images LIKE 'thumbnail_path'"
+        has_thumbnail_column = execute_query(check_thumbnail_column, fetch_one=True)
+
+        if not has_thumbnail_column:
+            alter_query = "ALTER TABLE images ADD COLUMN thumbnail_path VARCHAR(500)"
+            execute_query(alter_query, commit=True)
+            logger.info("为images表添加thumbnail_path字段成功")
+
+        logger.info("数据库初始化完成")
 
     except Exception as e:
         logger.error(f"数据库检查失败: {e}")
