@@ -234,6 +234,13 @@ def create_thumbnail(image_path, max_size=(300, 200)):
 def inject_now():
     return {'now': datetime.now()}
 
+# 添加音乐播放器配置
+@app.context_processor
+def inject_music_config():
+    return {
+        'enable_music': True,  # 控制是否启用音乐播放器
+        'default_playlist': '3778678',  # 默认播放列表ID
+    }
 # ====================== 11. 核心路由 ======================
 @app.route('/')
 def index():
@@ -276,6 +283,12 @@ def index():
         images = []
 
     return render_template('index.html', images=images)
+
+@app.route('/music-settings')
+@login_required
+def music_settings():
+    """音乐播放器设置页面"""
+    return render_template('music_settings.html')
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():

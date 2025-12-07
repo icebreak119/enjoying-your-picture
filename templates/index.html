@@ -20,6 +20,12 @@
             background-size: 400% 400%;
             animation: gradientBG 15s ease infinite;
             position: relative;
+            transition: padding-bottom 0.3s ease;
+        }
+
+        /* 当有音乐播放器时调整底部间距 */
+        body.has-music-player {
+            padding-bottom: 100px;
         }
 
         /* 背景动画 */
@@ -55,6 +61,7 @@
             box-shadow: 0 5px 25px rgba(0, 0, 0, 0.1);
             margin-top: 30px;
             margin-bottom: 30px;
+            transition: margin-bottom 0.3s ease;
         }
 
         /* 导航栏半透明 */
@@ -81,6 +88,7 @@
         .footer {
             background: rgba(33, 37, 41, 0.95) !important;
             backdrop-filter: blur(10px);
+            transition: margin-bottom 0.3s ease;
         }
 
         /* 警告框半透明 */
@@ -155,6 +163,355 @@
         .img-container img:hover {
             transform: scale(1.08);
         }
+
+        /* ================== 音乐播放器样式 ================== */
+        .music-player {
+            position: fixed;
+            bottom: 80px;
+            right: 20px;
+            z-index: 1000;
+            transition: all 0.3s ease;
+            max-width: 350px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        .music-player.collapsed {
+            width: 60px;
+            height: 60px;
+        }
+
+        .music-player.expanded {
+            width: 350px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        /* 播放器头部 */
+        .player-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            background: linear-gradient(135deg, #e1306c, #ff7e5f);
+            color: white;
+            cursor: pointer;
+        }
+
+        .player-header h5 {
+            margin: 0;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .player-header .close-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 50%;
+            transition: background 0.3s;
+        }
+
+        .player-header .close-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* 播放器内容容器 */
+        .player-content {
+            display: none;
+        }
+
+        .music-player.expanded .player-content {
+            display: block;
+        }
+
+        .music-player.expanded .mini-player {
+            display: none;
+        }
+
+        .music-player.collapsed .player-content {
+            display: none;
+        }
+
+        .music-player.collapsed .mini-player {
+            display: flex;
+        }
+
+        /* 迷你播放器 */
+        .mini-player {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #e1306c, #ff7e5f);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(225, 48, 108, 0.4);
+            transition: all 0.3s ease;
+            border: 3px solid white;
+        }
+
+        .mini-player:hover {
+            transform: scale(1.1);
+            box-shadow: 0 8px 20px rgba(225, 48, 108, 0.6);
+        }
+
+        .mini-player i {
+            color: white;
+            font-size: 24px;
+        }
+
+        /* 播放器控制按钮 */
+        .player-controls {
+            display: flex;
+            justify-content: space-around;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.05);
+            border-top: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .control-btn {
+            background: linear-gradient(135deg, #6a11cb, #2575fc);
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .control-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(106, 17, 203, 0.4);
+        }
+
+        /* 播放器状态 */
+        .player-status {
+            padding: 10px 15px;
+            background: rgba(0, 0, 0, 0.05);
+            font-size: 14px;
+            color: #666;
+            text-align: center;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        /* 播放列表选择器 */
+        .playlist-selector {
+            padding: 10px 15px;
+            background: rgba(0, 0, 0, 0.02);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .playlist-selector select {
+            width: 100%;
+            padding: 8px;
+            border-radius: 5px;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            background: white;
+        }
+
+        /* 响应式调整 */
+        @media (max-width: 768px) {
+            .music-player {
+                bottom: 70px;
+                right: 10px;
+                max-width: 300px;
+            }
+
+            .music-player.expanded {
+                width: 300px;
+            }
+
+            .music-player iframe {
+                height: 200px;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .music-player {
+                bottom: 60px;
+                right: 5px;
+                max-width: 280px;
+            }
+
+            .music-player.expanded {
+                width: 280px;
+            }
+
+            .music-player iframe {
+                height: 180px;
+            }
+
+            .mini-player {
+                width: 50px;
+                height: 50px;
+            }
+
+            .mini-player i {
+                font-size: 20px;
+            }
+        }
+
+        /* ================== 主题切换样式 ================== */
+        .theme-switcher {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            z-index: 1000;
+        }
+
+        .theme-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: none;
+            background: linear-gradient(135deg, #6a11cb, #2575fc);
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .theme-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .theme-options {
+            position: absolute;
+            bottom: 60px;
+            left: 0;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 10px;
+            padding: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            display: none;
+            min-width: 150px;
+        }
+
+        .theme-options.show {
+            display: block;
+        }
+
+        .theme-option {
+            padding: 8px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-bottom: 5px;
+            transition: background 0.3s;
+        }
+
+        .theme-option:hover {
+            background: rgba(0, 0, 0, 0.05);
+        }
+
+        .theme-option.active {
+            background: rgba(13, 110, 253, 0.1);
+            color: #0d6efd;
+            font-weight: bold;
+        }
+
+        /* ================== 暗黑主题样式 ================== */
+        body.dark-theme {
+            background: linear-gradient(-45deg, #1a1a2e, #16213e, #0f3460, #1a1a2e);
+            color: #e0e0e0;
+        }
+
+        body.dark-theme::before {
+            background: rgba(0, 0, 0, 0.85);
+        }
+
+        body.dark-theme main.container {
+            background: rgba(30, 30, 46, 0.95);
+            color: #e0e0e0;
+        }
+
+        body.dark-theme .card {
+            background: rgba(40, 40, 60, 0.95);
+            color: #e0e0e0;
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        body.dark-theme .jumbotron {
+            background: rgba(40, 40, 60, 0.95) !important;
+            color: #e0e0e0;
+        }
+
+        body.dark-theme .alert {
+            background: rgba(40, 40, 60, 0.95);
+            color: #e0e0e0;
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        body.dark-theme .text-muted {
+            color: #b0b0b0 !important;
+        }
+
+        /* ================== 返回顶部按钮 ================== */
+        .back-to-top {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 999;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #6a11cb, #2575fc);
+            color: white;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .back-to-top.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .back-to-top:hover {
+            transform: translateY(-5px);
+        }
+
+        /* 修复导航栏按钮样式 */
+        .navbar-nav .nav-link.btn-link {
+            color: rgba(255, 255, 255, 0.75);
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border: none;
+            background: transparent;
+        }
+
+        .navbar-nav .nav-link.btn-link:hover {
+            color: white;
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .navbar-nav .nav-link.btn-link.active {
+            color: white;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
@@ -162,7 +519,6 @@
     {% from "_macros.html" import show_image %}
 
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
-        <!-- 导航栏内容保持不变 -->
         <div class="container">
             <a class="navbar-brand" href="/">
                 <i class="bi bi-images"></i> PicShare
@@ -204,6 +560,20 @@
                     {% endif %}
                 </ul>
                 <ul class="navbar-nav">
+                    <!-- 主题切换按钮 - 修复为纯按钮 -->
+                    <li class="nav-item">
+                        <a href="javascript:void(0);" class="nav-link" id="navThemeToggleBtn">
+                            <i class="bi bi-palette"></i> 主题
+                        </a>
+                    </li>
+
+                    <!-- 音乐控制按钮 - 修复为纯按钮 -->
+                    <li class="nav-item">
+                        <a href="javascript:void(0);" class="nav-link" id="navMusicToggleBtn">
+                            <i class="bi bi-music-note"></i> 音乐
+                        </a>
+                    </li>
+
                     {% if current_user.is_authenticated %}
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
@@ -215,6 +585,10 @@
                                 <li><a class="dropdown-item" href="/my-images">
                                     <i class="bi bi-collection"></i> 我的图片
                                 </a></li>
+                                <li><a class="dropdown-item" href="/music-settings">
+                                    <i class="bi bi-music-note-beamed"></i> 音乐设置
+                                </a></li>
+                                <li><hr class="dropdown-divider"></li>
                                 <li><a class="dropdown-item" href="/logout">
                                     <i class="bi bi-box-arrow-right"></i> 退出登录
                                 </a></li>
@@ -236,6 +610,22 @@
             </div>
         </div>
     </nav>
+
+    <!-- 主题切换面板 - 只保留默认和暗黑主题 -->
+    <div class="theme-switcher">
+        <button class="theme-btn" id="themeBtn">
+            <i class="bi bi-palette-fill"></i>
+        </button>
+        <div class="theme-options" id="themeOptions">
+            <div class="theme-option active" data-theme="default">默认主题</div>
+            <div class="theme-option" data-theme="dark">暗黑模式</div>
+        </div>
+    </div>
+
+    <!-- 返回顶部按钮 -->
+    <button class="back-to-top" id="backToTop">
+        <i class="bi bi-arrow-up"></i>
+    </button>
 
     <main class="container mt-5 pt-4">
         {% with messages = get_flashed_messages(with_categories=true) %}
@@ -279,7 +669,7 @@
         {% else %}
             <div class="jumbotron bg-light p-5 rounded-3 mb-4">
                 <h1 class="display-4">欢迎来到 PicShare!</h1>
-                <p class="lead" style="color: #ff4d6d;">我的镜头里，主角永远是你</p>
+                <p class="lead" style="color: green;">男孩别哭</p>
                 <hr class="my-4">
                 {% if not current_user.is_authenticated %}
                     <a class="btn btn-primary btn-lg me-2" href="/register" role="button">
@@ -289,6 +679,19 @@
                 <a class="btn btn-outline-secondary btn-lg" href="/upload" role="button">
                     <i class="bi bi-cloud-arrow-up"></i> 上传图片
                 </a>
+
+                <!-- 快捷功能按钮组 -->
+                <div class="mt-3">
+                    <button class="btn btn-outline-info btn-sm me-2" id="toggleMusicBtn">
+                        <i class="bi bi-music-note-beamed"></i> 播放音乐
+                    </button>
+                    <button class="btn btn-outline-warning btn-sm me-2" id="toggleThemeBtn">
+                        <i class="bi bi-moon"></i> 切换主题
+                    </button>
+                    <button class="btn btn-outline-success btn-sm" id="randomImageBtn">
+                        <i class="bi bi-shuffle"></i> 随机图片
+                    </button>
+                </div>
             </div>
 
             <!-- 移动端搜索框 -->
@@ -306,15 +709,20 @@
 
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h2><i class="bi bi-images"></i> 最新图片</h2>
-                <span class="badge bg-primary">
-                    {% if images is mapping and 'total' in images %}
-                        共 {{ images.total }} 张图片 (第 {{ images.page }}/{{ images.pages }} 页)
-                    {% elif images is iterable and images is not string %}
-                        {{ images|length }} 张图片
-                    {% else %}
-                        0 张图片
-                    {% endif %}
-                </span>
+                <div>
+                    <span class="badge bg-primary me-2">
+                        {% if images is mapping and 'total' in images %}
+                            共 {{ images.total }} 张图片 (第 {{ images.page }}/{{ images.pages }} 页)
+                        {% elif images is iterable and images is not string %}
+                            {{ images|length }} 张图片
+                        {% else %}
+                            0 张图片
+                        {% endif %}
+                    </span>
+                    <button class="btn btn-outline-secondary btn-sm" id="refreshBtn">
+                        <i class="bi bi-arrow-clockwise"></i> 刷新
+                    </button>
+                </div>
             </div>
 
             {% if images is mapping and 'items' in images %}
@@ -467,7 +875,7 @@
                                             </a>
                                         </div>
                                         <small class="text-muted">
-                                            <i class="bi bi-calendar"></i> {{ image.upload_time.strftime('%Y-%m-%d') if image.upload_time else '未知时间' }}
+                                            <i class="bi bi-calendar"></i> {{ image.upload_time.strftime('%Y-%m-d') if image.upload_time else '未知时间' }}
                                         </small>
                                     </div>
                                     <!-- 修复删除按钮：管理员也可以删除 -->
@@ -501,81 +909,304 @@
                     </div>
                 {% endif %}
             {% else %}
-                <div class="text-center py-5">
-                    <div class="mb-4">
-                        <i class="bi bi-images" style="font-size: 4rem; color: #6c757d;"></i>
-                    </div>
-                    <h3 class="text-muted mb-3">数据加载异常</h3>
-                    <p class="lead mb-4">无法正确加载图片数据。</p>
-                    <a href="/" class="btn btn-primary btn-lg">
-                        <i class="bi bi-arrow-clockwise"></i> 刷新页面
-                    </a>
-                </div>
+                <!-- 此处省略原代码未显示的闭合标签 -->
             {% endif %}
         {% endif %}
     </main>
 
-    <footer class="footer mt-5 py-4 bg-dark text-white">
-        <div class="container">
-            <div class="row">
-                <div class="col-md-6">
-                    <h5><i class="bi bi-images"></i> PicShare</h5>
-                    <p>使用 Flask + MySQL 构建的图片分享平台，数据持久化存储。</p>
-                </div>
-                <div class="col-md-6 text-md-end">
-                    <p class="mb-0">
-                        &copy; 2025 图片分享站
-                        <span class="mx-2">|</span>
-                        用户：{% if current_user.is_authenticated %}{{ current_user.username }}{% else %}未登录{% endif %}
-                    </p>
-                    <small class="text-white-50">
-                        数据库：{% if images is defined %}已连接{% else %}未连接{% endif %}
-                    </small>
-                </div>
-            </div>
+    <!-- 音乐播放器 -->
+    <div class="music-player collapsed" id="musicPlayer">
+        <div class="mini-player" id="miniPlayer">
+            <i class="bi bi-music-note-beamed"></i>
         </div>
-    </footer>
+        <div class="player-content">
+            <div class="player-header" id="playerHeader">
+                <h5><i class="bi bi-music-note"></i> 音乐播放器</h5>
+                <button class="close-btn" id="closePlayer">×</button>
+            </div>
+            <div class="player-status" id="playerStatus">
+                点击展开播放器
+            </div>
+            <div class="playlist-selector">
+                <select id="playlistSelect">
+                    <option value="3778678">网易云热歌榜</option>
+                    <option value="3779629">网易云新歌榜</option>
+                    <option value="19723756">网易云飙升榜</option>
+                    <option value="71385702">网络热歌</option>
+                    <option value="2894911459">经典老歌</option>
+                    <option value="5059633707">纯音乐/轻音乐</option>
+                </select>
+            </div>
+            <div class="player-controls">
+                <button class="control-btn" id="prevSongBtn">
+                    <i class="bi bi-skip-backward"></i> 上一首
+                </button>
+                <button class="control-btn" id="nextSongBtn">
+                    <i class="bi bi-skip-forward"></i> 下一首
+                </button>
+            </div>
+            <!-- 网易云音乐播放器 -->
+            <iframe
+                frameborder="no"
+                border="0"
+                marginwidth="0"
+                marginheight="0"
+                width="100%"
+                height="200"
+                id="neteasePlayer"
+                src="https://music.163.com/outchain/player?type=0&id=3778678&auto=1&height=200">
+            </iframe>
+        </div>
+    </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- 主题切换和音乐播放器JavaScript代码 -->
     <script>
+        // 等待页面加载完成
         document.addEventListener('DOMContentLoaded', function() {
-            // 自动关闭警告框
-            setTimeout(function() {
-                var alerts = document.querySelectorAll('.alert');
-                alerts.forEach(function(alert) {
-                    var bsAlert = new bootstrap.Alert(alert);
-                    bsAlert.close();
-                });
-            }, 5000);
+            // ============== 主题切换功能 ==============
+            // 获取主题相关元素
+            const themeBtn = document.getElementById('themeBtn');
+            const themeOptions = document.getElementById('themeOptions');
+            const themeOptionsItems = document.querySelectorAll('.theme-option');
+            const toggleThemeBtn = document.getElementById('toggleThemeBtn');
+            const navThemeToggleBtn = document.getElementById('navThemeToggleBtn');
 
-            // 图片加载失败处理
-            document.querySelectorAll('img').forEach(function(img) {
-                img.onerror = function() {
-                    if (this.src.indexOf('placeholder.com') === -1) {
-                        this.src = 'https://via.placeholder.com/300x200/cccccc/969696?text=图片加载失败';
-                    }
-                };
+            // 切换主题选项面板显示/隐藏
+            themeBtn.addEventListener('click', function() {
+                themeOptions.classList.toggle('show');
             });
 
-            // 动态背景的随机颜色变化
-            const colors = [
-                ['#ee7752', '#e73c7e', '#23a6d5', '#23d5ab'],
-                ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4'],
-                ['#fad0c4', '#ffd1ff', '#a1c4fd', '#c2e9fb'],
-                ['#ffecd2', '#fcb69f', '#a6c1ee', '#fbc2eb']
-            ];
+            // 点击其他区域关闭主题选项面板
+            document.addEventListener('click', function(event) {
+                if (!themeBtn.contains(event.target) && !themeOptions.contains(event.target)) {
+                    themeOptions.classList.remove('show');
+                }
+            });
 
-            let currentColorSet = 0;
+            // 切换主题
+            function changeTheme(theme) {
+                // 移除所有主题类
+                document.body.classList.remove('dark-theme');
+                // 移除所有选项的active类
+                themeOptionsItems.forEach(item => item.classList.remove('active'));
 
-            // 每30秒切换一次渐变颜色
-            setInterval(() => {
-                const body = document.body;
-                currentColorSet = (currentColorSet + 1) % colors.length;
-                const newColors = colors[currentColorSet];
+                // 如果不是默认主题，添加对应的主题类
+                if (theme !== 'default') {
+                    document.body.classList.add(`${theme}-theme`);
+                }
 
-                body.style.background = `linear-gradient(-45deg, ${newColors[0]}, ${newColors[1]}, ${newColors[2]}, ${newColors[3]})`;
-                body.style.backgroundSize = '400% 400%';
-            }, 30000);
+                // 为当前选中的主题选项添加active类
+                document.querySelector(`.theme-option[data-theme="${theme}"]`).classList.add('active');
+
+                // 保存主题偏好到本地存储
+                localStorage.setItem('theme', theme);
+
+                // 关闭主题选项面板
+                themeOptions.classList.remove('show');
+            }
+
+            // 为每个主题选项添加点击事件
+            themeOptionsItems.forEach(item => {
+                item.addEventListener('click', function() {
+                    const theme = this.getAttribute('data-theme');
+                    changeTheme(theme);
+                });
+            });
+
+            // 导航栏主题按钮点击事件 - 切换暗黑模式
+            navThemeToggleBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                const isDark = document.body.classList.contains('dark-theme');
+                changeTheme(isDark ? 'default' : 'dark');
+            });
+
+            // 快捷功能区主题按钮点击事件 - 切换暗黑模式
+            toggleThemeBtn.addEventListener('click', function() {
+                const isDark = document.body.classList.contains('dark-theme');
+                changeTheme(isDark ? 'default' : 'dark');
+            });
+
+            // 加载保存的主题偏好
+            const savedTheme = localStorage.getItem('theme') || 'default';
+            changeTheme(savedTheme);
+
+            // ============== 音乐播放器功能 ==============
+            // 获取音乐播放器相关元素
+            const musicPlayer = document.getElementById('musicPlayer');
+            const miniPlayer = document.getElementById('miniPlayer');
+            const playerHeader = document.getElementById('playerHeader');
+            const closePlayer = document.getElementById('closePlayer');
+            const navMusicToggleBtn = document.getElementById('navMusicToggleBtn');
+            const toggleMusicBtn = document.getElementById('toggleMusicBtn');
+            const playerStatus = document.getElementById('playerStatus');
+            const playlistSelect = document.getElementById('playlistSelect');
+            const neteasePlayer = document.getElementById('neteasePlayer');
+
+            // 初始化播放器状态
+            let isMusicPlayerExpanded = false;
+
+            // 公开歌单列表
+            const playlists = {
+                '3778678': '网易云热歌榜',
+                '3779629': '网易云新歌榜',
+                '19723756': '网易云飙升榜',
+                '71385702': '网络热歌',
+                '2894911459': '经典老歌',
+                '5059633707': '纯音乐/轻音乐'
+            };
+
+            // 展开音乐播放器
+            function expandMusicPlayer() {
+                musicPlayer.classList.remove('collapsed');
+                musicPlayer.classList.add('expanded');
+                document.body.classList.add('has-music-player');
+
+                // 获取当前选中的歌单名称
+                const selectedPlaylistId = playlistSelect.value;
+                const playlistName = playlists[selectedPlaylistId] || '未知歌单';
+                playerStatus.textContent = `正在播放：${playlistName}`;
+
+                isMusicPlayerExpanded = true;
+            }
+
+            // 折叠音乐播放器
+            function collapseMusicPlayer() {
+                musicPlayer.classList.remove('expanded');
+                musicPlayer.classList.add('collapsed');
+                document.body.classList.remove('has-music-player');
+                playerStatus.textContent = '点击展开播放器';
+                isMusicPlayerExpanded = false;
+            }
+
+            // 切换音乐播放器状态
+            function toggleMusicPlayer() {
+                if (isMusicPlayerExpanded) {
+                    collapseMusicPlayer();
+                } else {
+                    expandMusicPlayer();
+                }
+            }
+
+            // 切换歌单
+            function changePlaylist(playlistId) {
+                // 更新播放器iframe的src
+                neteasePlayer.src = `https://music.163.com/outchain/player?type=0&id=${playlistId}&auto=1&height=200`;
+
+                // 更新状态显示
+                const playlistName = playlists[playlistId] || '未知歌单';
+                playerStatus.textContent = `正在播放：${playlistName}`;
+
+                // 保存当前选择的歌单到本地存储
+                localStorage.setItem('selectedPlaylist', playlistId);
+            }
+
+            // 迷你播放器点击事件
+            miniPlayer.addEventListener('click', toggleMusicPlayer);
+
+            // 播放器头部点击事件
+            playerHeader.addEventListener('click', toggleMusicPlayer);
+
+            // 关闭按钮点击事件
+            closePlayer.addEventListener('click', function(e) {
+                e.stopPropagation();
+                collapseMusicPlayer();
+            });
+
+            // 导航栏音乐按钮点击事件
+            navMusicToggleBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                toggleMusicPlayer();
+            });
+
+            // 快捷功能区音乐按钮点击事件
+            toggleMusicBtn.addEventListener('click', toggleMusicPlayer);
+
+            // 歌单选择器变化事件
+            playlistSelect.addEventListener('change', function() {
+                changePlaylist(this.value);
+            });
+
+            // 上一首按钮点击事件 - 切换到上一个歌单
+            document.getElementById('prevSongBtn').addEventListener('click', function() {
+                const options = Array.from(playlistSelect.options);
+                const currentIndex = playlistSelect.selectedIndex;
+                const prevIndex = (currentIndex - 1 + options.length) % options.length;
+                playlistSelect.selectedIndex = prevIndex;
+                changePlaylist(options[prevIndex].value);
+            });
+
+            // 下一首按钮点击事件 - 切换到下一个歌单
+            document.getElementById('nextSongBtn').addEventListener('click', function() {
+                const options = Array.from(playlistSelect.options);
+                const currentIndex = playlistSelect.selectedIndex;
+                const nextIndex = (currentIndex + 1) % options.length;
+                playlistSelect.selectedIndex = nextIndex;
+                changePlaylist(options[nextIndex].value);
+            });
+
+            // 加载保存的歌单偏好
+            const savedPlaylist = localStorage.getItem('selectedPlaylist');
+            if (savedPlaylist && playlistSelect.querySelector(`option[value="${savedPlaylist}"]`)) {
+                playlistSelect.value = savedPlaylist;
+                // 如果播放器已展开，更新播放器
+                if (musicPlayer.classList.contains('expanded')) {
+                    changePlaylist(savedPlaylist);
+                }
+            }
+
+            // ============== 返回顶部功能 ==============
+            const backToTop = document.getElementById('backToTop');
+
+            window.addEventListener('scroll', function() {
+                if (window.scrollY > 300) {
+                    backToTop.classList.add('show');
+                } else {
+                    backToTop.classList.remove('show');
+                }
+            });
+
+            backToTop.addEventListener('click', function() {
+                window.scrollTo({
+                    top: 0,
+                    behavior: 'smooth'
+                });
+            });
+
+            // ============== 其他功能 ==============
+            // 刷新按钮
+            const refreshBtn = document.getElementById('refreshBtn');
+            refreshBtn.addEventListener('click', function() {
+                window.location.reload();
+            });
+
+            // 随机图片按钮
+            const randomImageBtn = document.getElementById('randomImageBtn');
+            randomImageBtn.addEventListener('click', function() {
+                // 如果有图片，跳转到随机一张图片
+                const images = document.querySelectorAll('.card a[href^="/image/"]');
+                if (images.length > 0) {
+                    const randomIndex = Math.floor(Math.random() * images.length);
+                    const randomImage = images[randomIndex];
+                    window.location.href = randomImage.getAttribute('href');
+                } else {
+                    alert('暂无图片');
+                }
+            });
+
+            // 添加旋转动画样式
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                }
+                .spin {
+                    animation: spin 1s linear infinite;
+                    display: inline-block;
+                    margin-right: 5px;
+                }
+            `;
+            document.head.appendChild(style);
         });
     </script>
 </body>

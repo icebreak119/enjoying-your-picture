@@ -174,14 +174,6 @@
                     loginBtn.innerHTML = originalText;
                 }, 2000);
             });
-
-            // 自动填充测试账户
-            document.getElementById('username').addEventListener('focus', function() {
-                if (!this.value) {
-                    this.value = 'admin';
-                    document.getElementById('password').value = 'admin123';
-                }
-            });
         });
     </script>
 </body>

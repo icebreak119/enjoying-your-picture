@@ -71,6 +71,71 @@
             border-radius: 5px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
+
+        /* 音乐播放器样式 */
+        .music-player {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+        .mini-player {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+        .expanded-player {
+            width: 350px;
+            padding: 1rem;
+        }
+        .player-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        .close-btn {
+            background: none;
+            border: none;
+            color: #666;
+            cursor: pointer;
+        }
+        .player-status {
+            margin-bottom: 1rem;
+            color: #666;
+            font-size: 0.9rem;
+        }
+        .player-controls {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+        .control-btn {
+            background: #f1f5f9;
+            border: none;
+            border-radius: 20px;
+            padding: 5px 12px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .control-btn:hover {
+            background: #e2e8f0;
+        }
     </style>
 </head>
 <body>
@@ -132,6 +197,71 @@
                     </a>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- 音乐播放器 -->
+    <div id="musicPlayer" class="music-player">
+        <!-- 迷你播放器模式 -->
+        <div class="mini-player" id="miniPlayer">
+            <i class="bi bi-music-note-beamed"></i>
+        </div>
+
+        <!-- 扩展播放器模式 -->
+        <div class="expanded-player" style="display: none;">
+            <div class="player-header" id="playerHeader">
+                <h5>
+                    <i class="bi bi-spotify"></i>
+                    <span id="playerTitle">网易云音乐</span>
+                </h5>
+                <button class="close-btn" id="closePlayer">
+                    <i class="bi bi-chevron-down"></i>
+                </button>
+            </div>
+
+            <div class="player-status" id="playerStatus">
+                正在播放：热歌榜
+            </div>
+
+            <!-- 网易云音乐播放器 -->
+            <div class="player-content">
+                <!-- 默认播放器：网易云热歌榜 -->
+                <iframe
+                    id="neteasePlayer"
+                    frameborder="no"
+                    border="0"
+                    marginwidth="0"
+                    marginheight="0"
+                    width="100%"
+                    height="350"
+                    src="//music.163.com/outchain/player?type=0&id=3778678&auto=0&height=430"
+                    allow="autoplay">
+                </iframe>
+
+                <!-- 可选歌单 -->
+                <div class="player-controls">
+                    <button class="control-btn" onclick="switchPlaylist('3778678')">
+                        <i class="bi bi-fire"></i> 热歌榜
+                    </button>
+                    <button class="control-btn" onclick="switchPlaylist('3779629')">
+                        <i class="bi bi-heart"></i> 新歌榜
+                    </button>
+                    <button class="control-btn" onclick="switchPlaylist('71385702')">
+                        <i class="bi bi-moon"></i> 轻音乐
+                    </button>
+                </div>
+
+                <!-- 播放器设置 -->
+                <div class="player-controls">
+                    <button class="control-btn" onclick="toggleAutoPlay()">
+                        <i class="bi bi-play-circle" id="autoPlayIcon"></i>
+                        <span id="autoPlayText">自动播放</span>
+                    </button>
+                    <button class="control-btn" onclick="mutePlayer()">
+                        <i class="bi bi-volume-up" id="volumeIcon"></i> 音量
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -248,9 +378,66 @@
                 alert('请选择要上传的图片文件！');
                 return false;
             }
-
             return true;
         });
+
+        // 音乐播放器功能
+        const musicPlayer = document.getElementById('musicPlayer');
+        const miniPlayer = document.getElementById('miniPlayer');
+        const expandedPlayer = document.querySelector('.expanded-player');
+        const closePlayer = document.getElementById('closePlayer');
+        const neteasePlayer = document.getElementById('neteasePlayer');
+        const autoPlayIcon = document.getElementById('autoPlayIcon');
+        const autoPlayText = document.getElementById('autoPlayText');
+        const volumeIcon = document.getElementById('volumeIcon');
+        let isAutoPlay = false;
+        let isMuted = false;
+
+        // 切换播放器显示状态
+        miniPlayer.addEventListener('click', () => {
+            miniPlayer.style.display = 'none';
+            expandedPlayer.style.display = 'block';
+        });
+
+        closePlayer.addEventListener('click', () => {
+            expandedPlayer.style.display = 'none';
+            miniPlayer.style.display = 'flex';
+        });
+
+        // 切换歌单
+        function switchPlaylist(playlistId) {
+            const newSrc = `//music.163.com/outchain/player?type=0&id=${playlistId}&auto=${isAutoPlay ? 1 : 0}&height=430`;
+            neteasePlayer.src = newSrc;
+
+            // 更新状态显示
+            const playlistNames = {
+                '3778678': '热歌榜',
+                '3779629': '新歌榜',
+                '71385702': '轻音乐'
+            };
+            document.getElementById('playerStatus').textContent = `正在播放：${playlistNames[playlistId] || '自定义歌单'}`;
+        }
+
+        // 切换自动播放
+        function toggleAutoPlay() {
+            isAutoPlay = !isAutoPlay;
+            autoPlayIcon.className = isAutoPlay ? 'bi bi-pause-circle' : 'bi bi-play-circle';
+            autoPlayText.textContent = isAutoPlay ? '取消自动播放' : '自动播放';
+
+            // 更新播放器自动播放状态
+            const currentSrc = neteasePlayer.src;
+            const newSrc = currentSrc.replace(/auto=\d/, `auto=${isAutoPlay ? 1 : 0}`);
+            neteasePlayer.src = newSrc;
+        }
+
+        // 静音切换
+        function mutePlayer() {
+            isMuted = !isMuted;
+            volumeIcon.className = isMuted ? 'bi bi-volume-mute' : 'bi bi-volume-up';
+
+            // 由于iframe跨域限制，无法直接控制音量，这里仅做UI提示
+            alert(isMuted ? '已静音（实际控制需在播放器内操作）' : '已开启音量（实际控制需在播放器内操作）');
+        }
     </script>
 </body>
 </html>

@@ -1,3 +1,8 @@
+前置操作:
+cd C:\Users\31368\Desktop\my_picshare
+
+git pull
+
 # 1. 添加所有更改
 git add .
 

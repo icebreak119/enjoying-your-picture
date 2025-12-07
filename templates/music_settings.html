@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2><i class="bi bi-music-note-beamed"></i> 音乐播放器设置</h2>
+    
+    <div class="card mt-4">
+        <div class="card-body">
+            <h5 class="card-title">播放器配置</h5>
+            
+            <div class="form-check form-switch mb-3">
+                <input class="form-check-input" type="checkbox" id="enableMusic" checked>
+                <label class="form-check-label" for="enableMusic">
+                    启用音乐播放器
+                </label>
+            </div>
+            
+            <div class="form-check form-switch mb-3">
+                <input class="form-check-input" type="checkbox" id="autoPlay">
+                <label class="form-check-label" for="autoPlay">
+                    页面加载后自动播放
+                </label>
+            </div>
+            
+            <div class="mb-3">
+                <label for="playlistSelect" class="form-label">默认播放列表</label>
+                <select class="form-select" id="playlistSelect">
+                    <option value="3778678">热歌榜</option>
+                    <option value="3779629">新歌榜</option>
+                    <option value="71385702">轻音乐</option>
+                    <option value="19723756">飙升榜</option>
+                    <option value="2884035">ACG音乐</option>
+                </select>
+            </div>
+            
+            <button class="btn btn-primary" onclick="saveSettings()">
+                <i class="bi bi-save"></i> 保存设置
+            </button>
+        </div>
+    </div>
+    
+    <div class="card mt-4">
+        <div class="card-body">
+            <h5 class="card-title">键盘快捷键</h5>
+            <ul class="list-group">
+                <li class="list-group-item">
+                    <kbd>Alt</kbd> + <kbd>M</kbd> - 显示/隐藏播放器
+                </li>
+                <li class="list-group-item">
+                    <kbd>Alt</kbd> + <kbd>1</kbd> - 切换到热歌榜
+                </li>
+                <li class="list-group-item">
+                    <kbd>Alt</kbd> + <kbd>2</kbd> - 切换到新歌榜
+                </li>
+                <li class="list-group-item">
+                    <kbd>Alt</kbd> + <kbd>3</kbd> - 切换到轻音乐
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<script>
+// 加载保存的设置
+document.addEventListener('DOMContentLoaded', function() {
+    const enableMusic = localStorage.getItem('enableMusic') !== 'false';
+    const autoPlay = localStorage.getItem('autoPlayMusic') === 'true';
+    const defaultPlaylist = localStorage.getItem('preferredPlaylist') || '3778678';
+    
+    document.getElementById('enableMusic').checked = enableMusic;
+    document.getElementById('autoPlay').checked = autoPlay;
+    document.getElementById('playlistSelect').value = defaultPlaylist;
+});
+
+// 保存设置
+function saveSettings() {
+    const enableMusic = document.getElementById('enableMusic').checked;
+    const autoPlay = document.getElementById('autoPlay').checked;
+    const playlist = document.getElementById('playlistSelect').value;
+    
+    localStorage.setItem('enableMusic', enableMusic);
+    localStorage.setItem('autoPlayMusic', autoPlay);
+    localStorage.setItem('preferredPlaylist', playlist);
+    
+    // 显示成功消息
+    const alert = document.createElement('div');
+    alert.className = 'alert alert-success alert-dismissible fade show mt-3';
+    alert.innerHTML = `
+        <i class="bi bi-check-circle"></i> 设置已保存！
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.querySelector('.container').appendChild(alert);
+    
+    setTimeout(() => {
+        if (alert.parentNode) {
+            alert.parentNode.removeChild(alert);
+        }
+    }, 3000);
+}
+</script>
+{% endblock %}

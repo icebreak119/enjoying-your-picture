@@ -1,0 +1,212 @@
+<!-- 音乐播放器组件 -->
+<div id="musicPlayer" class="music-player collapsed">
+    <!-- 迷你播放器模式 -->
+    <div class="mini-player" id="miniPlayer">
+        <i class="bi bi-music-note-beamed"></i>
+    </div>
+    
+    <!-- 扩展播放器模式 -->
+    <div class="expanded-player" style="display: none;">
+        <div class="player-header" id="playerHeader">
+            <h5>
+                <i class="bi bi-spotify"></i>
+                <span id="playerTitle">网易云音乐</span>
+            </h5>
+            <button class="close-btn" id="closePlayer">
+                <i class="bi bi-chevron-down"></i>
+            </button>
+        </div>
+        
+        <div class="player-status" id="playerStatus">
+            正在播放：随机推荐歌单
+        </div>
+        
+        <!-- 网易云音乐播放器 -->
+        <div class="player-content">
+            <!-- 默认播放器：网易云热歌榜 -->
+            <iframe 
+                id="neteasePlayer" 
+                frameborder="no" 
+                border="0" 
+                marginwidth="0" 
+                marginheight="0" 
+                width="100%" 
+                height="390"
+                src="//music.163.com/outchain/player?type=0&id=3778678&auto=1&height=430"
+                allow="autoplay">
+            </iframe>
+            
+            <!-- 可选歌单 -->
+            <div class="player-controls">
+                <button class="control-btn" onclick="switchPlaylist('3778678')">
+                    <i class="bi bi-fire"></i> 热歌榜
+                </button>
+                <button class="control-btn" onclick="switchPlaylist('3779629')">
+                    <i class="bi bi-heart"></i> 新歌榜
+                </button>
+                <button class="control-btn" onclick="switchPlaylist('71385702')">
+                    <i class="bi bi-moon"></i> 轻音乐
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// 网易云音乐播放器配置
+const playlists = {
+    '3778678': { name: '热歌榜', url: '//music.163.com/outchain/player?type=0&id=3778678&auto=1&height=430' },
+    '3779629': { name: '新歌榜', url: '//music.163.com/outchain/player?type=0&id=3779629&auto=1&height=430' },
+    '71385702': { name: '轻音乐', url: '//music.163.com/outchain/player?type=0&id=71385702&auto=1&height=430' },
+    '19723756': { name: '飙升榜', url: '//music.163.com/outchain/player?type=0&id=19723756&auto=1&height=430' },
+    '2884035': { name: 'ACG', url: '//music.163.com/outchain/player?type=0&id=2884035&auto=1&height=430' }
+};
+
+// 切换播放列表
+function switchPlaylist(playlistId) {
+    const playlist = playlists[playlistId];
+    if (playlist) {
+        const player = document.getElementById('neteasePlayer');
+        const status = document.getElementById('playerStatus');
+        const title = document.getElementById('playerTitle');
+        
+        player.src = playlist.url;
+        status.textContent = `正在播放：${playlist.name}`;
+        title.textContent = `网易云 - ${playlist.name}`;
+        
+        // 保存用户选择到本地存储
+        localStorage.setItem('preferredPlaylist', playlistId);
+        
+        // 显示通知
+        showNotification(`已切换到${playlist.name}`);
+    }
+}
+
+// 显示通知
+function showNotification(message) {
+    // 创建通知元素
+    const notification = document.createElement('div');
+    notification.className = 'alert alert-info alert-dismissible fade show';
+    notification.style.cssText = `
+        position: fixed;
+        top: 80px;
+        right: 20px;
+        z-index: 2000;
+        min-width: 250px;
+        backdrop-filter: blur(10px);
+    `;
+    notification.innerHTML = `
+        <i class="bi bi-music-note"></i> ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // 5秒后自动移除
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.parentNode.removeChild(notification);
+        }
+    }, 5000);
+}
+
+// 初始化播放器
+document.addEventListener('DOMContentLoaded', function() {
+    const musicPlayer = document.getElementById('musicPlayer');
+    const miniPlayer = document.getElementById('miniPlayer');
+    const closePlayer = document.getElementById('closePlayer');
+    const expandedPlayer = document.querySelector('.expanded-player');
+    const playerHeader = document.getElementById('playerHeader');
+    
+    // 点击迷你播放器展开
+    miniPlayer.addEventListener('click', function(e) {
+        e.stopPropagation();
+        expandPlayer();
+    });
+    
+    // 点击关闭按钮折叠
+    closePlayer.addEventListener('click', function(e) {
+        e.stopPropagation();
+        collapsePlayer();
+    });
+    
+    // 点击头部也可以折叠
+    playerHeader.addEventListener('click', function(e) {
+        if (e.target === playerHeader || e.target.tagName === 'H5') {
+            collapsePlayer();
+        }
+    });
+    
+    // 展开播放器
+    function expandPlayer() {
+        musicPlayer.classList.remove('collapsed');
+        musicPlayer.classList.add('expanded');
+        miniPlayer.style.display = 'none';
+        expandedPlayer.style.display = 'block';
+        
+        // 添加到body类
+        document.body.classList.add('has-music-player');
+        
+        // 恢复用户上次选择的歌单
+        const savedPlaylist = localStorage.getItem('preferredPlaylist');
+        if (savedPlaylist && playlists[savedPlaylist]) {
+            switchPlaylist(savedPlaylist);
+        }
+    }
+    
+    // 折叠播放器
+    function collapsePlayer() {
+        musicPlayer.classList.remove('expanded');
+        musicPlayer.classList.add('collapsed');
+        miniPlayer.style.display = 'flex';
+        expandedPlayer.style.display = 'none';
+        document.body.classList.remove('has-music-player');
+    }
+    
+    // 点击播放器外部不关闭（阻止事件冒泡）
+    expandedPlayer.addEventListener('click', function(e) {
+        e.stopPropagation();
+    });
+    
+    // 点击页面其他地方不关闭播放器
+    document.addEventListener('click', function(e) {
+        if (!musicPlayer.contains(e.target) && !miniPlayer.contains(e.target)) {
+            // 如果点击的是播放器外部，什么都不做
+        }
+    });
+    
+    // 键盘快捷键支持
+    document.addEventListener('keydown', function(e) {
+        // Alt+M 切换播放器状态
+        if (e.altKey && e.key === 'm') {
+            e.preventDefault();
+            if (musicPlayer.classList.contains('collapsed')) {
+                expandPlayer();
+            } else {
+                collapsePlayer();
+            }
+        }
+        
+        // Alt+1-5 切换歌单
+        if (e.altKey && e.key >= '1' && e.key <= '5') {
+            const playlistKeys = Object.keys(playlists);
+            const index = parseInt(e.key) - 1;
+            if (index < playlistKeys.length) {
+                switchPlaylist(playlistKeys[index]);
+            }
+        }
+    });
+    
+    // 初始化：检查是否自动展开
+    const autoExpand = localStorage.getItem('playerAutoExpand');
+    if (autoExpand === 'true') {
+        expandPlayer();
+    }
+    
+    // 保存用户设置
+    window.addEventListener('beforeunload', function() {
+        const isExpanded = musicPlayer.classList.contains('expanded');
+        localStorage.setItem('playerAutoExpand', isExpanded);
+    });
+});
+</script>
